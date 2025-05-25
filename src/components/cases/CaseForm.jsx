@@ -504,34 +504,33 @@ const onSubmit = async (data) => {
   toast.info('Procesando solicitud...');
   
   try {
-    // Asegurar que tenemos los IDs numéricos actualizados
-    const plaintiffIds = personasSeleccionadas.demandantes.map(p => Number(p.id));
-    const defendantIds = personasSeleccionadas.demandados.map(p => Number(p.id));
-    const attorneyIds = personasSeleccionadas.abogados.map(p => Number(p.id));
-    const representativeIds = personasSeleccionadas.representantes.map(p => Number(p.id));
+    // CAMBIO: Obtener RUTs en lugar de IDs numéricos
+    const plaintiffRuts = personasSeleccionadas.demandantes.map(p => p.rut);
+    const defendantRuts = personasSeleccionadas.demandados.map(p => p.rut);
+    const attorneyRuts = personasSeleccionadas.abogados.map(p => p.rut);
+    const representativeRuts = personasSeleccionadas.representantes.map(p => p.rut);
     
     // Validar que tenemos al menos un demandante y demandado
-    if (plaintiffIds.length === 0) {
+    if (plaintiffRuts.length === 0) {
       toast.error('Debe seleccionar al menos un demandante');
       setSaving(false);
       return;
     }
     
-    if (defendantIds.length === 0) {
+    if (defendantRuts.length === 0) {
       toast.error('Debe seleccionar al menos un demandado');
       setSaving(false);
       return;
     }
     
-    // Transformar datos al formato esperado por la API - CAMBIO: arrays para attorney y representative
+    // CAMBIO: Enviar RUTs como strings al backend
     const lawsuitRequest = {
       proceedingType: data.proceedingType,
       subjectMatter: data.legalMatter,
-      plaintiffs: plaintiffIds,
-      defendants: defendantIds,
-      // CAMBIO: Enviar como array en lugar de un solo elemento
-      attorneyOfRecord: attorneyIds.length > 0 ? attorneyIds : undefined,
-      representative: representativeIds.length > 0 ? representativeIds : undefined,
+      plaintiffs: plaintiffRuts,                    // Array de RUTs como strings
+      defendants: defendantRuts,                    // Array de RUTs como strings
+      attorneyOfRecord: attorneyRuts.length > 0 ? attorneyRuts[0] : undefined,     // RUT como string
+      representative: representativeRuts.length > 0 ? representativeRuts[0] : undefined, // RUT como string
       claims: claimsList,
       institution: data.institution,
       narrative: data.description
@@ -544,11 +543,8 @@ const onSubmit = async (data) => {
       subjectMatter: typeof lawsuitRequest.subjectMatter,
       plaintiffs: Array.isArray(lawsuitRequest.plaintiffs) && lawsuitRequest.plaintiffs.map(p => typeof p),
       defendants: Array.isArray(lawsuitRequest.defendants) && lawsuitRequest.defendants.map(d => typeof d),
-      // CAMBIO: Actualizar logs para arrays
-      attorneyOfRecord: Array.isArray(lawsuitRequest.attorneyOfRecord) ? 
-        lawsuitRequest.attorneyOfRecord.map(a => typeof a) : typeof lawsuitRequest.attorneyOfRecord,
-      representative: Array.isArray(lawsuitRequest.representative) ? 
-        lawsuitRequest.representative.map(r => typeof r) : typeof lawsuitRequest.representative,
+      attorneyOfRecord: typeof lawsuitRequest.attorneyOfRecord,
+      representative: typeof lawsuitRequest.representative,
       claims: Array.isArray(lawsuitRequest.claims) && lawsuitRequest.claims.map(c => typeof c),
       institution: typeof lawsuitRequest.institution,
       narrative: typeof lawsuitRequest.narrative
