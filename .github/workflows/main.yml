@@ -1,0 +1,67 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: Stage
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '22'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build project
+      env:
+        NEXT_PUBLIC_ABOGABOT_API_URL: ${{ vars.NEXT_PUBLIC_ABOGABOT_API_URL }}
+      run: npm run build
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: out
+
+  deployment:
+    runs-on: ubuntu-latest
+    needs: build 
+    environment: Stage
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      BUCKET_NAME: ${{ vars.BUCKET_NAME }}
+      DISTRIBUTION_ID: ${{ vars.DISTRIBUTION_ID }}
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-artifacts
+        path: out
+      
+    - name: Sync Files to S3
+      run: |
+        LOCAL_DIR="./out"
+        aws s3 sync $LOCAL_DIR s3://$BUCKET_NAME/ --exclude "*.html"
+        find "$LOCAL_DIR" -type f -name "*.html" | while read -r file; do
+          base_filename=$(basename "$file" .html)
+          aws s3 cp "$file" "s3://$BUCKET_NAME/$base_filename" --content-type "text/html"
+        done
+
+    - name: Invalidate CloudFront Cache
+      run: |
+        aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"

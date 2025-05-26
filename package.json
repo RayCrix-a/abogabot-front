@@ -5,6 +5,7 @@
   "scripts": {
     "generate-sources": "dotenv -- tsx ./src/scripts/generate-sources.js",
     "dev": "next dev",
+    "prebuild": "npm run generate-sources",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
