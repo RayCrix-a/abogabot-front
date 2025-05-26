@@ -5,8 +5,9 @@ import { FiEdit, FiTrash2, FiMessageSquare } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import EditCaseForm from './EditCaseForm';
 
-const CaseDetails = ({ caseData, onDelete, onStatusChange, onEdit }) => {
+const CaseDetails = ({ caseData, onDelete, onStatusChange }) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   
   // Función para formatear la fecha
@@ -18,18 +19,35 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, onEdit }) => {
       console.error('Error al formatear fecha:', error);
       return dateString || 'Fecha no disponible';
     }
-  };
-
+  }; 
+  
   // Función para manejar la eliminación del caso
-  const handleDelete = () => {
-    if (isConfirmingDelete) {
-      onDelete();
-      toast.success('Caso eliminado correctamente');
-      setIsConfirmingDelete(false);
-    } else {
-      setIsConfirmingDelete(true);
+const handleDelete = async () => {
+  if (isConfirmingDelete) {
+    try {
+      setIsDeleting(true);
+      console.log('Usuario confirmó eliminación en CaseDetails');
+      console.log('Llamando a onDelete() - ID de caso:', caseData?.id);
+      const success = await onDelete();
+      console.log('Resultado de onDelete:', success);
+      if (success) {
+        setIsConfirmingDelete(false);
+        // No añadimos toast aquí porque se manejará en useLawsuits.js o [id].js
+      } else {
+        toast.error('No se pudo eliminar el caso');
+        console.log('onDelete no retornó true, manteniendo estado de confirmación');
+      }
+    } catch (error) {
+      console.error('Error capturado en CaseDetails durante eliminación:', error);
+      toast.error(`Error al eliminar el caso: ${error.message || 'Error desconocido'}`);
+      setIsConfirmingDelete(false); // Reset del estado para permitir intentar de nuevo
+    } finally {
+      setIsDeleting(false);
     }
-  };
+  } else {
+    setIsConfirmingDelete(true);
+  }
+};
   
   // Cancelar eliminación
   const cancelDelete = () => {
@@ -44,38 +62,72 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, onEdit }) => {
   // Cancelar edición
   const cancelEditing = () => {
     setIsEditing(false);
-  };
-
-  // Función para cambiar el estado del caso
-  const handleStatusChange = (newStatus) => {
-    onStatusChange(newStatus);
-    
-    // Mensaje según el nuevo estado
-    const statusMessages = {
-      'En curso': 'El caso ahora está en curso',
-      'Pendiente': 'El caso ahora está pendiente',
-      'Finalizado': 'El caso ha sido finalizado y movido al historial'
+  };  // Obtener el estado para mostrar
+  const getDisplayStatus = (status) => {
+    const statusMap = {
+      'IN_PROGRESS': 'En curso',
+      'PENDING': 'Pendiente',
+      'FINALIZED': 'Finalizado',
+      'DRAFT': 'Borrador'
+    };
+    return statusMap[status] || status;
+  };  // Función para cambiar el estado
+  const handleStatusChange = async (event) => {
+    const statusMap = {
+      'En curso': 'IN_PROGRESS',
+      'Pendiente': 'PENDING',
+      'Finalizado': 'FINALIZED',
+      'Borrador': 'DRAFT'
     };
     
-    toast.info(statusMessages[newStatus] || 'Estado actualizado');
-  };
+    const apiStatus = statusMap[event.target.value];
+    if (!apiStatus) return;
 
+    try {
+      // Mostrar confirmación si se está finalizando el caso
+      if (apiStatus === 'FINALIZED') {
+        if (!window.confirm('¿Estás seguro de que deseas finalizar este caso? Una vez finalizado, solo será visible en el historial.')) {
+          return;
+        }
+      }
+
+      // Llamar a la función de actualización y esperar a que termine
+      await onStatusChange(apiStatus);
+      
+      // Solo mostrar el mensaje después de que la actualización fue exitosa
+      const messages = {
+        'IN_PROGRESS': 'Caso marcado como en curso',
+        'PENDING': 'Caso marcado como pendiente',
+        'FINALIZED': 'Caso finalizado y movido al historial',
+        'DRAFT': 'Caso guardado como borrador'
+      };
+      toast.success(messages[apiStatus] || 'Estado actualizado correctamente');
+
+    } catch (error) {
+      console.error('Error al cambiar el estado:', error);
+      // No mostrar toast aquí, ya se mostrará en el manejador de errores del hook
+    }
+  };
   // Función para obtener el color del estado
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'Finalizado':
-        return 'bg-green-600 text-white';
-      case 'Pendiente':
-        return 'bg-amber-500 text-white';
-      case 'En curso':
-        return 'bg-blue-600 text-white';
-      default:
-        return 'bg-gray-700 text-gray-300';
-    }
+    if (typeof status !== 'string') return 'bg-gray-700 text-gray-300';
+    
+    const statusColor = {
+      'Finalizado': 'bg-green-600 text-white',
+      'FINALIZED': 'bg-green-600 text-white',
+      'Pendiente': 'bg-amber-500 text-white',
+      'PENDING': 'bg-amber-500 text-white',
+      'En curso': 'bg-blue-600 text-white',
+      'IN_PROGRESS': 'bg-blue-600 text-white',
+      'Borrador': 'bg-gray-600 text-white',
+      'DRAFT': 'bg-gray-600 text-white'
+    };
+    
+    return statusColor[status] || 'bg-gray-700 text-gray-300';
   };
 
   // Determinar el estado actual del caso
-  const status = caseData.status || 'En curso';
+  const status = getDisplayStatus(caseData.status);
 
   // Si estamos en modo edición, mostramos el formulario de edición
   if (isEditing) {
@@ -109,20 +161,28 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, onEdit }) => {
             <FiEdit className="w-4 h-4" />
             <span className="hidden sm:inline">Editar</span>
           </button>
-          
-          {isConfirmingDelete ? (
+            {isConfirmingDelete ? (
             <div className="flex space-x-2">
               <button
                 onClick={cancelDelete}
                 className="btn py-2 px-3 bg-gray-700 text-white"
+                disabled={isDeleting}
               >
                 Cancelar
               </button>
               <button
                 onClick={handleDelete}
-                className="btn py-2 px-3 bg-red-600 text-white"
+                className="btn py-2 px-3 bg-red-600 text-white flex items-center gap-1"
+                disabled={isDeleting}
               >
-                Confirmar
+                {isDeleting ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                    Eliminando...
+                  </>
+                ) : (
+                  'Confirmar'
+                )}
               </button>
             </div>
           ) : (
@@ -167,18 +227,16 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, onEdit }) => {
                     <span className={`px-3 py-1 rounded-md text-sm font-medium ${getStatusColor(status)}`}>
                       {status}
                     </span>
-                    
-                    {/* Selector para cambiar estado con mejor visibilidad */}
-                    <div className="relative">
+                      {/* Selector para cambiar estado */}                    <div className="relative">
                       <select
-                        value={status}
-                        onChange={(e) => handleStatusChange(e.target.value)}
+                        value={getDisplayStatus(caseData.status)}
+                        onChange={handleStatusChange}
                         className="bg-gray-700 text-white border-none rounded-md py-1 px-2 text-sm appearance-none cursor-pointer pr-8 hover:bg-gray-600 transition-colors"
                       >
-                        <option value="" disabled>Cambiar estado</option>
                         <option value="En curso">En curso</option>
                         <option value="Pendiente">Pendiente</option>
                         <option value="Finalizado">Finalizado</option>
+                        <option value="Borrador">Borrador</option>
                       </select>
                       <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

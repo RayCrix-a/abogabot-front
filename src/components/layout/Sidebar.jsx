@@ -2,11 +2,11 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { FiHome, FiFolder, FiClock, FiSettings } from 'react-icons/fi';
-import { useCases } from '@/hooks/useCases';
+import { useLawsuits } from '@/hooks/useLawsuits'; // Cambio aquí
 
 const Sidebar = ({ isOpen, onToggle }) => {
   const router = useRouter();
-  const { cases } = useCases();
+  const { lawsuits } = useLawsuits(); // Cambio aquí
 
   // Efecto para sincronizar el estado del sidebar con localStorage
   useEffect(() => {
@@ -14,7 +14,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
   }, [isOpen]);
 
   // Filtrar casos recientes (no finalizados)
-  const recentCases = cases?.filter(c => c.status !== 'Finalizado').slice(0, 5) || [];
+  const recentCases = lawsuits?.filter(c => c.status !== 'FINALIZED').slice(0, 5) || [];
 
   // Verificar si una ruta está activa
   const isActive = (path) => {
@@ -90,7 +90,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
                 recentCases.map((caseItem) => (
                   <RecentCaseItem
                     key={caseItem.id}
-                    title={caseItem.title}
+                    title={caseItem.subjectMatter} // Cambio aquí
                     date={`Creado: ${new Date(caseItem.createdAt).toLocaleDateString()}`}
                     path={`/cases/${caseItem.id}`}
                   />

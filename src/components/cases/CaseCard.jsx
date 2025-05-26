@@ -14,10 +14,15 @@ const CaseCard = ({ caseData }) => {
       return dateString || 'Fecha no disponible';
     }
   };
-
   // Función para determinar el estado
   const getStatus = () => {
-    return caseData.status || 'En curso';
+    const statusMap = {
+      'IN_PROGRESS': 'En curso',
+      'PENDING': 'Pendiente',
+      'FINALIZED': 'Finalizado',
+      'DRAFT': 'Borrador'
+    };
+    return statusMap[caseData.status] || 'En curso';
   };
 
   // Función para determinar el color de estado

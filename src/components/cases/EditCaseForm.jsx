@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'react-toastify';
 import { FiSave, FiX } from 'react-icons/fi';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLawsuits } from '@/hooks/useLawsuits';
 import { useParticipants } from '@/hooks/useParticipants';
 import { useProceedingTypes } from '@/hooks/useProceedingTypes';
@@ -15,7 +14,7 @@ const editCaseSchema = z.object({
   proceedingType: z.string().min(1, 'Seleccione un tipo de procedimiento'),
   subjectMatter: z.string().min(1, 'Ingrese una materia legal'),
   plaintiffs: z.array(z.string()).min(1, 'Debe seleccionar al menos un demandante'),
-  attorneyOfRecord: z.string().min(1, 'Seleccione un abogado patrocinante'),
+  attorneyOfRecord: z.string().optional(),
   defendants: z.array(z.string()).min(1, 'Debe seleccionar al menos un demandado'),
   representative: z.string().optional(),
   claims: z.array(z.string()).min(1, 'Ingrese al menos una petición'),
@@ -24,7 +23,6 @@ const editCaseSchema = z.object({
 });
 
 const EditCaseForm = ({ caseData, onCancel }) => {
-  const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [claimInput, setClaimInput] = useState('');
   const [claimsList, setClaimsList] = useState([]);
@@ -42,7 +40,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     isLoadingDefendants,
     isLoadingRepresentatives
   } = useParticipants();
-  const { proceedingTypes, isLoadingProceedingTypes } = useProceedingTypes();
+  const { proceedingTypeOptions, isLoading: isLoadingProceedingTypes } = useProceedingTypes();
   
   // Preparar valores iniciales para el formulario
   const getInitialValues = () => {
@@ -104,14 +102,25 @@ const EditCaseForm = ({ caseData, onCancel }) => {
 
   // Manejar el envío del formulario
   const onSubmit = async (data) => {
+    // Validar que tenemos el ID del caso
+    if (!caseData?.id) {
+      toast.error('Error: No se puede actualizar el caso sin ID');
+      return;
+    }
+
     setSaving(true);
     try {
-      // Transformar datos al formato esperado por la API
+      console.log('Datos del formulario:', data);
+      console.log('ID del caso:', caseData.id);
+      console.log('Status actual del caso:', caseData.status);
+      
+      // Transformar datos al formato esperado por la API según el swagger
       const lawsuitRequest = {
         proceedingType: data.proceedingType,
         subjectMatter: data.subjectMatter,
+        status: caseData.status, // Mantener el status actual del caso
         plaintiffs: data.plaintiffs,
-        attorneyOfRecord: data.attorneyOfRecord,
+        attorneyOfRecord: data.attorneyOfRecord || undefined,
         defendants: data.defendants,
         representative: data.representative || undefined,
         claims: data.claims,
@@ -119,18 +128,20 @@ const EditCaseForm = ({ caseData, onCancel }) => {
         narrative: data.narrative
       };
       
-      // Actualizar la demanda
-      await updateLawsuit(caseData.id, lawsuitRequest);
+      console.log('Datos enviados a la API:', lawsuitRequest);
+      
+      // CORRECCIÓN: Pasar el objeto con id y data como espera la mutación
+      await updateLawsuit({ id: caseData.id, data: lawsuitRequest });
       
       // Invalidar consultas para refrescar datos
-      queryClient.invalidateQueries(['lawsuits']);
-      queryClient.invalidateQueries(['lawsuit', caseData.id]);
+      queryClient.invalidateQueries({ queryKey: ['lawsuits'] });
+      queryClient.invalidateQueries({ queryKey: ['lawsuit', caseData.id] });
       
-      toast.success('Caso actualizado exitosamente');
       onCancel(); // Cerrar formulario de edición
     } catch (error) {
       console.error('Error al actualizar caso:', error);
-      toast.error('Error al actualizar el caso');
+      // El toast de error se maneja en el hook useLawsuits
+    } finally {
       setSaving(false);
     }
   };
@@ -171,9 +182,9 @@ const EditCaseForm = ({ caseData, onCancel }) => {
             className={`input-field ${errors.proceedingType ? 'border-red-500' : ''}`}
           >
             <option value="">Seleccione una opción</option>
-            {proceedingTypes?.map(type => (
-              <option key={type.name} value={type.name}>
-                {type.description}
+            {proceedingTypeOptions?.map(type => (
+              <option key={type.value} value={type.value}>
+                {type.label}
               </option>
             ))}
           </select>
@@ -330,7 +341,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
               ))}
             </ul>
           ) : (
-            <p className="text-gray-500 text-sm p-2">No hay peticiones añadidas</p>
+            <p className="text-gray-500 text-sm p-2">No hay peticiones agregadas</p>
           )}
         </div>
         {errors.claims && (

@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import MainLayout from '@/components/layout/MainLayout';
 import CaseDetails from '@/components/cases/CaseDetails';
 import DocumentViewer from '@/components/document/DocumentViewer';
@@ -11,6 +12,7 @@ import { toast } from 'react-toastify';
 
 export default function CaseDetail() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { id } = router.query;
   const [activeTab, setActiveTab] = useState('document'); // 'document' o 'chat'
   const [markdownContent, setMarkdownContent] = useState('');
@@ -21,6 +23,7 @@ export default function CaseDetail() {
     useLawsuit, 
     deleteLawsuit, 
     updateLawsuit,
+    updateLawsuitStatus,
     useLawsuitLastRevisions,
     generate,
     loading: isLoadingGeneration
@@ -31,50 +34,83 @@ export default function CaseDetail() {
   const { data: revision, isLoading: isLoadingRevision, error: revisiontError } = useLawsuitLastRevisions(id);
 
   useEffect(() => {
-    // Si el documento tiene contenido, establecerlo
+    // Si el documento tiene contenido, establecerlo    
     if (revision) {
       setMarkdownContent(revision);
     }
-  }, [revision]);
-
-  // Manejar eliminación de caso
-  const handleDeleteCase = async () => {
-    try {
+  }, [revision]);  // Manejar eliminación de caso  
+const handleDeleteCase = async () => {
+  if (!id) {
+    console.error('No se puede eliminar caso: ID no especificado');
+    return false;
+  }
+  
+  try {
+    console.log('Intentando eliminar caso con ID:', id);
+    // Asegurarnos de que estamos pasando el ID correctamente
+    const numericId = parseInt(id, 10);
+    
+    if (isNaN(numericId)) {
+      console.log('Usando ID como string:', id);
       await deleteLawsuit(id);
-      router.push('/dashboard');
-    } catch (error) {
-      console.error('Error al eliminar caso:', error);
-      toast.error(`Error al eliminar el caso: ${error.message || 'Error desconocido'}`);
+    } else {
+      console.log('Usando ID como número:', numericId);
+      await deleteLawsuit(numericId);
     }
-  };
-
+    
+    console.log('Operación de eliminación completada exitosamente');
+    // Desactivar las consultas para evitar que se sigan actualizando
+    queryClient.removeQueries(['lawsuit', id]);
+    
+    // En caso de éxito, redirigir al dashboard
+    toast.success('Caso eliminado exitosamente');
+    router.push('/dashboard');
+    return true;
+  } catch (error) {
+    console.error('Error detallado al eliminar demanda:', error);
+    toast.error(`Error al eliminar el caso: ${error.message || 'Error desconocido'}`);
+    return false;
+  }
+};
   // Manejar cambio de estado del caso
-  const handleStatusChange = async (newStatus) => {
-    try {
-      if (!lawsuit) return;
-      
-      // En una implementación real, enviaríamos el estado al servidor
-      // Por ahora solo mostramos una notificación
-      toast.info(`Estado cambiado a: ${newStatus}`);
-      
-      if (newStatus === 'Finalizado') {
-        toast.info('El caso ha sido finalizado y movido al historial');
-      }
-    } catch (error) {
-      console.error('Error al cambiar el estado:', error);
-      toast.error(`Error al cambiar el estado: ${error.message || 'Error desconocido'}`);
-    }
-  };
+const handleStatusChange = async (newStatus) => {
+  try {
+    if (!id || !lawsuit) return;
+    
+    // Creamos un objeto que cumple con la interfaz LawsuitRequest según el swagger
+    const updateData = {
+      proceedingType: lawsuit.proceedingType.name,
+      subjectMatter: lawsuit.subjectMatter,
+      status: newStatus, // El nuevo status que queremos aplicar
+      plaintiffs: lawsuit.plaintiffs.map(p => p.idNumber),
+      defendants: lawsuit.defendants.map(d => d.idNumber),
+      attorneyOfRecord: lawsuit.attorneyOfRecord?.idNumber || undefined,
+      representative: lawsuit.representative?.idNumber || undefined,
+      claims: lawsuit.claims,
+      institution: lawsuit.institution,
+      narrative: lawsuit.narrative
+    };
+    
+    console.log('Actualizando estado con ID:', id, 'y datos:', updateData);
+    
+    // CORRECCIÓN: Pasar el objeto con id y data como espera la mutación
+    await updateLawsuit({ id: parseInt(id, 10), data: updateData });
+  } catch (error) {
+    console.error('Error al cambiar el estado:', error);
+    toast.error(`Error al cambiar el estado: ${error.message || 'Error desconocido'}`);
+  }
+};
 
-  // Manejar edición del caso
-  const handleEditCase = async (updatedData) => {
-    try {
-      await updateLawsuit(id, updatedData);
-    } catch (error) {
-      console.error('Error al actualizar el caso:', error);
-      toast.error(`Error al actualizar el caso: ${error.message || 'Error desconocido'}`);
-    }
-  };
+// Manejar edición del caso
+const handleEditCase = async (updatedData) => {
+  try {
+    // CORRECCIÓN: También aquí pasar el objeto correcto
+    await updateLawsuit({ id: parseInt(id, 10), data: updatedData });
+  } catch (error) {
+    console.error('Error al actualizar el caso:', error);
+    toast.error(`Error al actualizar el caso: ${error.message || 'Error desconocido'}`);
+  }
+};
 
   // Generar documento
   const handleGenerateDocument = async () => {

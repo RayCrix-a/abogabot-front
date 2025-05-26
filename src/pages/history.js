@@ -12,7 +12,7 @@ export default function HistoryPage() {
   const [filter, setFilter] = useState('all'); // 'all', 'recent'
 
   // Filtrar para mostrar solo los casos finalizados
-  const historyCases = (lawsuits || []).filter(c => c.status === 'Finalizado');
+  const historyCases = (lawsuits || []).filter(c => c.status === 'FINALIZED');
 
   // Aplicamos filtros de búsqueda y tipo
   const filteredCases = historyCases.filter(caseItem => {

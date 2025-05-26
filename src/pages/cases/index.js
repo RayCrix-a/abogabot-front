@@ -7,19 +7,18 @@ import { useLawsuits } from '@/hooks/useLawsuits';
 
 export default function CasesIndex() {
   const { lawsuits, isLoadingLawsuits } = useLawsuits();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState('all'); // 'all', 'active', 'pending'
+  const [searchTerm, setSearchTerm] = useState('');  const [filter, setFilter] = useState('all'); // 'all', 'active', 'pending'
 
   // Filtrar primero para excluir los casos finalizados
-  const activeCases = (lawsuits || []).filter(c => c.status !== 'Finalizado');
+  const activeCases = (lawsuits || []).filter(c => c.status !== 'FINALIZED');
 
   // Aplicar filtros de búsqueda y estado
   const filteredCases = activeCases.filter(caseItem => {
     const matchesSearch = caseItem.subjectMatter?.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (filter === 'all') return matchesSearch;
-    if (filter === 'active') return matchesSearch && caseItem.status === 'En curso';
-    if (filter === 'pending') return matchesSearch && caseItem.status === 'Pendiente';
+    if (filter === 'active') return matchesSearch && caseItem.status === 'IN_PROGRESS';
+    if (filter === 'pending') return matchesSearch && caseItem.status === 'PENDING';
     
     return matchesSearch;
   });

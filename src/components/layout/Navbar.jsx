@@ -47,11 +47,11 @@ const Navbar = ({ toggleSidebar }) => {
       {/* Parte derecha */}
       <div className="flex items-center space-x-3">
         {/* Botón Nuevo Caso */}
-        <Link href="/cases/new">
+        {/* <Link href="/cases/new">
           <button className="btn-primary text-sm py-1.5 px-3">
-            Nuevo Caso
+            Nuevo Casooo
           </button>
-        </Link>
+        </Link> */}
 
         {/* Botón de tema */}
         <button

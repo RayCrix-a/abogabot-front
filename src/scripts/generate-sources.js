@@ -3,9 +3,10 @@ import * as process from "node:process";
 import { generateApi } from "swagger-typescript-api";
 
 async function main() {
-    const specUrl = process.env.ABOGABOT_OPENAPI_SPEC ?? (() => { throw new Error("Environment variable ABOGABOT_OPENAPI_SPEC is not defined"); })();
+    const specUrl = process.env.NEXT_PUBLIC_ABOGABOT_API_URL ?? (() => { throw new Error("Environment variable NEXT_PUBLIC_ABOGABOT_API_URL is not defined"); })();
+
     await generateApi({
-        url: specUrl,
+        url: specUrl + "/openapi.json",
         output: path.resolve(process.cwd(), "src/generated/api"),
         cleanOutput: true,
         moduleNameFirstTag: true,

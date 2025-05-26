@@ -1,21 +1,18 @@
-import { useState, useEffect } from 'react';
-import { FiPlus, FiFolder, FiClock, FiSearch, FiEdit, FiTrash2, FiFileText } from 'react-icons/fi';
+import { useState } from 'react';
+import { FiPlus, FiFolder, FiSearch } from 'react-icons/fi';
 import MainLayout from '@/components/layout/MainLayout';
 import CaseCard from '@/components/cases/CaseCard';
 import { useLawsuits } from '@/hooks/useLawsuits';
 import Link from 'next/link';
-import { format, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Dashboard() {
   const { lawsuits, isLoadingLawsuits } = useLawsuits();
   const [searchTerm, setSearchTerm] = useState('');
   const { user } = useAuth();
-  const [recentActivities, setRecentActivities] = useState([]);
 
   // Filtrar casos activos (no finalizados)
-  const activeCases = (lawsuits || []).filter(c => c.status !== 'Finalizado');
+  const activeCases = (lawsuits || []).filter(c => c.status !== 'FINALIZED');
 
   // Obtener los 3 casos más recientes
   const recentCases = [...(activeCases || [])]
@@ -31,57 +28,6 @@ export default function Dashboard() {
   const filteredCases = recentCases.filter(caseItem => 
     caseItem.subjectMatter?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Función para formatear la fecha
-  const formatActivityDate = (dateString) => {
-    try {
-      const date = parseISO(dateString);
-      const now = new Date();
-      
-      const diffInMinutes = Math.floor((now - date) / (1000 * 60));
-      
-      if (diffInMinutes < 1) return 'Ahora mismo';
-      if (diffInMinutes < 60) return `Hace ${diffInMinutes} minutos`;
-      
-      const diffInHours = Math.floor(diffInMinutes / 60);
-      if (diffInHours < 24) return `Hace ${diffInHours} horas`;
-      
-      return format(date, "d 'de' MMMM", { locale: es });
-    } catch (error) {
-      console.error('Error al formatear fecha:', error);
-      return dateString || 'Fecha no disponible';
-    }
-  };
-
-  // Generar actividades recientes basadas en los casos
-  useEffect(() => {
-    if (lawsuits && lawsuits.length > 0) {
-      const activities = [];
-      
-      // Simular actividades basadas en las demandas existentes
-      lawsuits.forEach(lawsuit => {
-        // Actividad de creación
-        activities.push({
-          id: `create-${lawsuit.id}`,
-          description: `Caso creado: ${lawsuit.subjectMatter}`,
-          timestamp: lawsuit.createdAt,
-          icon: <FiFileText className="text-blue-500" />,
-          type: 'create',
-          caseId: lawsuit.id
-        });
-      });
-      
-      // Ordenar actividades por timestamp (más reciente primero)
-      activities.sort((a, b) => {
-        const dateA = new Date(a.timestamp);
-        const dateB = new Date(b.timestamp);
-        return dateB - dateA;
-      });
-      
-      // Tomar las 5 actividades más recientes
-      setRecentActivities(activities.slice(0, 5));
-    }
-  }, [lawsuits]);
 
   return (
     <MainLayout title="Dashboard" description="Gestione sus casos legales con AbogaBot">
@@ -147,41 +93,6 @@ export default function Dashboard() {
             </Link>
           </div>
         )}
-      </section>
-
-      {/* Sección de actividad reciente */}
-      <section>
-        <div className="flex items-center mb-4">
-          <FiClock className="text-primary mr-2 w-5 h-5" />
-          <h2 className="text-xl font-semibold text-white">Actividad reciente</h2>
-        </div>
-        
-        <div className="bg-dark p-4 rounded-lg">
-          {recentActivities.length > 0 ? (
-            <ul className="divide-y divide-gray-700">
-              {recentActivities.map((activity) => (
-                <li key={activity.id} className="py-3 flex items-start">
-                  <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center mr-3">
-                    {activity.icon}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white text-sm">{activity.description}</p>
-                    <p className="text-xs text-gray-400">{formatActivityDate(activity.timestamp)}</p>
-                  </div>
-                  <Link href={`/cases/${activity.caseId}`}>
-                    <button className="text-xs text-primary hover:underline">
-                      Ver caso
-                    </button>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="text-center py-3">
-              <p className="text-gray-400 text-sm">No hay actividad reciente</p>
-            </div>
-          )}
-        </div>
       </section>
     </MainLayout>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiDownload, FiShare2, FiEye, FiFileText } from 'react-icons/fi';
+import { FiShare2, FiEye, FiFileText } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { Document, Paragraph, TextRun, Packer } from 'docx';
 
@@ -17,36 +17,6 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument }) => {
     }
   }, [documentData]);
   
-  // Función para manejar la descarga
-  const handleDownload = () => {
-    if (!documentData) {
-      toast.error('No hay documento para descargar');
-      return;
-    }
-    
-    try {
-      // Crear un Blob con el contenido del documento
-      const blob = new Blob([markdownContent], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      
-      // Crear un elemento 'a' y simular clic para descargar
-      const a = window.document.createElement('a');
-      a.href = url;
-      a.download = `demanda-${lawsuit?.id || 'documento'}.md`;
-      window.document.body.appendChild(a);
-      a.click();
-      
-      // Limpiar
-      window.document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast.success('Documento descargado correctamente');
-    } catch (error) {
-      console.error('Error al descargar el documento:', error);
-      toast.error('Error al descargar el documento');
-    }
-  };
-
   // Función para convertir texto a párrafos de Word
   const convertToWordParagraphs = (text) => {
     return text.split('\n').map(line => {
@@ -276,15 +246,6 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument }) => {
             Vista previa
           </button>
           
-          <button
-            onClick={handleDownload}
-            disabled={!markdownContent}
-            className="btn flex items-center gap-2 bg-green-900 text-green-300 hover:bg-green-800"
-          >
-            <FiDownload className="w-4 h-4" />
-            Descargar MD
-          </button>
-
           <button
             onClick={handleDownloadWord}
             disabled={!markdownContent}
