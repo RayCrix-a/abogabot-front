@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'react-toastify';
 import { FiSave, FiX } from 'react-icons/fi';
 import { useQueryClient } from '@tanstack/react-query';
-import { useLawsuits } from '@/hooks/useLawsuits'; // Cambio aquí
+import { useLawsuits } from '@/hooks/useLawsuits';
 import { useParticipants } from '@/hooks/useParticipants';
 import { useProceedingTypes } from '@/hooks/useProceedingTypes';
 
@@ -24,14 +23,13 @@ const editCaseSchema = z.object({
 });
 
 const EditCaseForm = ({ caseData, onCancel }) => {
-  const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [claimInput, setClaimInput] = useState('');
   const [claimsList, setClaimsList] = useState([]);
   const queryClient = useQueryClient();
   
   // Hooks para acceder a la API
-  const { updateLawsuit } = useLawsuits(); // Cambio aquí
+  const { updateLawsuit } = useLawsuits();
   const {
     plaintiffs,
     lawyers,
@@ -103,40 +101,50 @@ const EditCaseForm = ({ caseData, onCancel }) => {
   };
 
   // Manejar el envío del formulario
-  // En EditCaseForm.jsx, línea ~105, corregir el onSubmit:
+  const onSubmit = async (data) => {
+    // Validar que tenemos el ID del caso
+    if (!caseData?.id) {
+      toast.error('Error: No se puede actualizar el caso sin ID');
+      return;
+    }
 
-const onSubmit = async (data) => {
-  setSaving(true);
-  try {
-    // Transformar datos al formato esperado por la API
-    const lawsuitRequest = {
-      proceedingType: data.proceedingType,
-      subjectMatter: data.subjectMatter,
-      plaintiffs: data.plaintiffs,
-      attorneyOfRecord: data.attorneyOfRecord || undefined,
-      defendants: data.defendants,
-      representative: data.representative || undefined,
-      claims: data.claims,
-      institution: data.institution,
-      narrative: data.narrative
-    };
-    
-    // Actualizar la demanda
-    await updateLawsuit(caseData.id, lawsuitRequest);
-    
-    // Invalidar consultas para refrescar datos
-    queryClient.invalidateQueries(['lawsuits']);
-    queryClient.invalidateQueries(['lawsuit', caseData.id]);
-    
-    // El toast de éxito se maneja en el hook useLawsuits
-    onCancel(); // Cerrar formulario de edición
-  } catch (error) {
-    console.error('Error al actualizar caso:', error);
-    // El toast de error se maneja en el hook useLawsuits
-  } finally {
-    setSaving(false); // CAMBIO: Mover aquí para que siempre se ejecute
-  }
-};
+    setSaving(true);
+    try {
+      console.log('Datos del formulario:', data);
+      console.log('ID del caso:', caseData.id);
+      console.log('Status actual del caso:', caseData.status);
+      
+      // Transformar datos al formato esperado por la API según el swagger
+      const lawsuitRequest = {
+        proceedingType: data.proceedingType,
+        subjectMatter: data.subjectMatter,
+        status: caseData.status, // Mantener el status actual del caso
+        plaintiffs: data.plaintiffs,
+        attorneyOfRecord: data.attorneyOfRecord || undefined,
+        defendants: data.defendants,
+        representative: data.representative || undefined,
+        claims: data.claims,
+        institution: data.institution,
+        narrative: data.narrative
+      };
+      
+      console.log('Datos enviados a la API:', lawsuitRequest);
+      
+      // CORRECCIÓN: Pasar el objeto con id y data como espera la mutación
+      await updateLawsuit({ id: caseData.id, data: lawsuitRequest });
+      
+      // Invalidar consultas para refrescar datos
+      queryClient.invalidateQueries({ queryKey: ['lawsuits'] });
+      queryClient.invalidateQueries({ queryKey: ['lawsuit', caseData.id] });
+      
+      onCancel(); // Cerrar formulario de edición
+    } catch (error) {
+      console.error('Error al actualizar caso:', error);
+      // El toast de error se maneja en el hook useLawsuits
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Mostrar indicador de carga mientras se obtienen los datos
   const isLoading = isLoadingProceedingTypes || isLoadingPlaintiffs || 
