@@ -55,12 +55,7 @@ jobs:
       
     - name: Sync Files to S3
       run: |
-        LOCAL_DIR="./out"
-        aws s3 sync $LOCAL_DIR s3://$BUCKET_NAME/ --exclude "*.html"
-        find "$LOCAL_DIR" -type f -name "*.html" | while read -r file; do
-          base_filename=$(basename "$file" .html)
-          aws s3 cp "$file" "s3://$BUCKET_NAME/$base_filename" --content-type "text/html"
-        done
+        aws s3 sync "./out" s3://$BUCKET_NAME/
 
     - name: Invalidate CloudFront Cache
       run: |
