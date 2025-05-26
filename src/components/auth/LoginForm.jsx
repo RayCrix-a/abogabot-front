@@ -86,7 +86,7 @@ const LoginForm = () => {
             </div>
             <input
               type={showPassword ? 'text' : 'password'}
-              placeholder="Ingresa tu contraseña"
+              placeholder="********"
               {...register('password')}
               className={`input-field pl-10 ${errors.password ? 'border-red-500' : ''}`}
             />
