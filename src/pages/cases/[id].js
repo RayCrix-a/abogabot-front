@@ -73,40 +73,44 @@ const handleDeleteCase = async () => {
   }
 };
   // Manejar cambio de estado del caso
-  const handleStatusChange = async (newStatus) => {
-    try {
-      if (!id || !lawsuit) return;
-      
-      // Creamos un objeto que cumple con la interfaz LawsuitRequest
-      const updateData = {
-        proceedingType: lawsuit.proceedingType.name,
-        subjectMatter: lawsuit.subjectMatter,
-        status: newStatus,
-        plaintiffs: lawsuit.plaintiffs.map(p => p.idNumber),
-        defendants: lawsuit.defendants.map(d => d.idNumber),
-        attorneyOfRecord: lawsuit.attorneyOfRecord?.idNumber,
-        representative: lawsuit.representative?.idNumber,
-        claims: lawsuit.claims,
-        institution: lawsuit.institution,
-        narrative: lawsuit.narrative
-      };
-      
-      await updateLawsuit(id, updateData);
-    } catch (error) {
-      console.error('Error al cambiar el estado:', error);
-      toast.error(`Error al cambiar el estado: ${error.message || 'Error desconocido'}`);
-    }
-  };
+const handleStatusChange = async (newStatus) => {
+  try {
+    if (!id || !lawsuit) return;
+    
+    // Creamos un objeto que cumple con la interfaz LawsuitRequest según el swagger
+    const updateData = {
+      proceedingType: lawsuit.proceedingType.name,
+      subjectMatter: lawsuit.subjectMatter,
+      status: newStatus, // El nuevo status que queremos aplicar
+      plaintiffs: lawsuit.plaintiffs.map(p => p.idNumber),
+      defendants: lawsuit.defendants.map(d => d.idNumber),
+      attorneyOfRecord: lawsuit.attorneyOfRecord?.idNumber || undefined,
+      representative: lawsuit.representative?.idNumber || undefined,
+      claims: lawsuit.claims,
+      institution: lawsuit.institution,
+      narrative: lawsuit.narrative
+    };
+    
+    console.log('Actualizando estado con ID:', id, 'y datos:', updateData);
+    
+    // CORRECCIÓN: Pasar el objeto con id y data como espera la mutación
+    await updateLawsuit({ id: parseInt(id, 10), data: updateData });
+  } catch (error) {
+    console.error('Error al cambiar el estado:', error);
+    toast.error(`Error al cambiar el estado: ${error.message || 'Error desconocido'}`);
+  }
+};
 
-  // Manejar edición del caso
-  const handleEditCase = async (updatedData) => {
-    try {
-      await updateLawsuit(id, updatedData);
-    } catch (error) {
-      console.error('Error al actualizar el caso:', error);
-      toast.error(`Error al actualizar el caso: ${error.message || 'Error desconocido'}`);
-    }
-  };
+// Manejar edición del caso
+const handleEditCase = async (updatedData) => {
+  try {
+    // CORRECCIÓN: También aquí pasar el objeto correcto
+    await updateLawsuit({ id: parseInt(id, 10), data: updatedData });
+  } catch (error) {
+    console.error('Error al actualizar el caso:', error);
+    toast.error(`Error al actualizar el caso: ${error.message || 'Error desconocido'}`);
+  }
+};
 
   // Generar documento
   const handleGenerateDocument = async () => {
