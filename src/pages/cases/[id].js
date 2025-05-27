@@ -9,8 +9,9 @@ import ChatBox from '@/components/chat/ChatBox';
 import { useLawsuits } from '@/hooks/useLawsuits';
 import { FiArrowLeft, FiFile, FiMessageCircle } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import { useAuth0, withAuthenticationRequired } from '@auth0/auth0-react'
 
-export default function CaseDetail() {
+export const CaseDetail = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { id } = router.query;
@@ -64,7 +65,7 @@ const handleDeleteCase = async () => {
     
     // En caso de éxito, redirigir al dashboard
     toast.success('Caso eliminado exitosamente');
-    router.push('/dashboard');
+    router.push('/');
     return true;
   } catch (error) {
     console.error('Error detallado al eliminar demanda:', error);
@@ -152,7 +153,7 @@ const handleEditCase = async (updatedData) => {
         <div className="bg-red-900 text-red-200 p-4 rounded-lg">
           <h2 className="text-xl font-bold mb-2">Error al cargar el caso</h2>
           <p>{lawsuitError.message || 'Error desconocido'}</p>
-          <Link href="/dashboard">
+          <Link href="/">
             <button className="mt-4 btn-primary">Volver al Dashboard</button>
           </Link>
         </div>
@@ -167,7 +168,7 @@ const handleEditCase = async (updatedData) => {
         <div className="bg-dark p-6 rounded-lg text-center">
           <h2 className="text-xl font-bold mb-2 text-white">Caso no encontrado</h2>
           <p className="text-gray-400 mb-4">El caso que estás buscando no existe o ha sido eliminado.</p>
-          <Link href="/dashboard">
+          <Link href="/">
             <button className="btn-primary">Volver al Dashboard</button>
           </Link>
         </div>
@@ -185,7 +186,7 @@ const handleEditCase = async (updatedData) => {
     >
       {/* Cabecera */}
       <div className="mb-6">
-        <Link href="/dashboard">
+        <Link href="/">
           <button className="flex items-center text-gray-400 hover:text-white mb-4">
             <FiArrowLeft className="mr-2" />
             Volver al Dashboard
@@ -246,3 +247,5 @@ const handleEditCase = async (updatedData) => {
     </MainLayout>
   );
 }
+
+export default withAuthenticationRequired(CaseDetail)

@@ -2,10 +2,10 @@ import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { FiMenu, FiBell, FiMoon, FiSun, FiLogOut, FiSettings, FiUser } from 'react-icons/fi';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth0, withAuthenticationRequired } from '@auth0/auth0-react'
 
 const Navbar = ({ toggleSidebar }) => {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuth0();
   const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -118,7 +118,7 @@ const Navbar = ({ toggleSidebar }) => {
                 </li>
                 <li className="border-t border-gray-700">
                   <button
-                    onClick={logout}
+                    onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
                     className="flex w-full items-center px-4 py-2 text-sm text-red-400 hover:bg-dark-light"
                   >
                     <FiLogOut className="mr-2 w-4 h-4" />

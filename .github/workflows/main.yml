@@ -25,6 +25,9 @@ jobs:
     - name: Build project
       env:
         NEXT_PUBLIC_ABOGABOT_API_URL: ${{ vars.NEXT_PUBLIC_ABOGABOT_API_URL }}
+        NEXT_PUBLIC_OAUTH2_DOMAIN: ${{ vars.NEXT_PUBLIC_OAUTH2_DOMAIN }}
+        NEXT_PUBLIC_OAUTH2_CLIENT_ID: ${{ vars.NEXT_PUBLIC_OAUTH2_CLIENT_ID }}
+        NEXT_PUBLIC_OAUTH2_AUDIENCE: ${{ vars.NEXT_PUBLIC_OAUTH2_AUDIENCE }}
       run: npm run build
     
     - name: Upload build artifacts

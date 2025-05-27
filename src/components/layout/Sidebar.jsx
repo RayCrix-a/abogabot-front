@@ -25,7 +25,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
   const navItems = [
     {
       name: 'Dashboard',
-      path: '/dashboard',
+      path: '/',
       icon: <FiHome className="w-5 h-5" />
     },
     {

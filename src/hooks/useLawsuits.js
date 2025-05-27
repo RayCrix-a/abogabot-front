@@ -2,12 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { lawsuitResource } from '@/lib/apiClient';
 import { toast } from 'react-toastify';
 import { useState, useCallback } from 'react';
-import { ContentType } from '@/generated/api/http-client'; // Añade esta importación
+import { useAuth0 } from '@auth0/auth0-react'
+
 /**
  * Hook para gestionar demandas legales
  * Proporciona funciones para listar, obtener, crear y eliminar demandas
  */
 export const useLawsuits = () => {
+  const { user, getAccessTokenSilently } = useAuth0();
   const queryClient = useQueryClient();
 
   // Query para obtener todas las demandas
@@ -19,7 +21,12 @@ export const useLawsuits = () => {
   } = useQuery({
     queryKey: ['lawsuits'],
     queryFn: async () => {
-      const response = await lawsuitResource.getAllLawsuits();
+      const accessToken = await getAccessTokenSilently();
+      const response = await lawsuitResource.getAllLawsuits({
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     }
   });
@@ -27,7 +34,12 @@ export const useLawsuits = () => {
   // Mutación para crear una nueva demanda
 const createLawsuitMutation = useMutation({
   mutationFn: async (data) => {
-    const response = await lawsuitResource.createLawsuit(data);
+    const accessToken = await getAccessTokenSilently();
+    const response = await lawsuitResource.createLawsuit(data, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
     return response.data;
   },
   onSuccess: (data) => {
@@ -43,7 +55,12 @@ const createLawsuitMutation = useMutation({
   // Mutación para actualizar una demanda
   const updateLawsuitMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const response = await lawsuitResource.updateLawsuit(id, data);
+      const accessToken = await getAccessTokenSilently();
+      const response = await lawsuitResource.updateLawsuit(id, data, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: (data, { id }) => {
@@ -60,8 +77,13 @@ const createLawsuitMutation = useMutation({
     mutationFn: async (id) => {
       console.log('Ejecutando mutación para eliminar demanda con ID:', id);
       try {
+        const accessToken = await getAccessTokenSilently();
         // Llamada explícita a la API usando el método deleteLawsuit
-        const response = await lawsuitResource.deleteLawsuit(id);
+        const response = await lawsuitResource.deleteLawsuit(id, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
         console.log('Respuesta de eliminación:', response);
         // Validar la respuesta
         if (!response || response.status >= 400) {
@@ -118,7 +140,12 @@ const createLawsuitMutation = useMutation({
   // Mutación para actualizar el estado de una demanda
   const updateLawsuitStatusMutation = useMutation({
     mutationFn: async ({ id, status }) => {
-      const response = await lawsuitResource.updateLawsuit(id, { status });
+      const accessToken = await getAccessTokenSilently();
+      const response = await lawsuitResource.updateLawsuit(id, { status }, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: (_, { id, status }) => {
@@ -157,7 +184,12 @@ const createLawsuitMutation = useMutation({
       queryKey: ['lawsuit', id],
       queryFn: async () => {
         if (!id) return null;
-        const response = await lawsuitResource.getLawsuit(id);
+        const accessToken = await getAccessTokenSilently();
+        const response = await lawsuitResource.getLawsuit(id, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
         return response.data;
       },
       enabled: !!id // Solo ejecutar si hay un ID
@@ -174,7 +206,12 @@ const createLawsuitMutation = useMutation({
       queryKey: ['lawsuit-revisions', id],
       queryFn: async () => {
         if (!id) return [];
-        const response = await lawsuitResource.getRevisions(id);
+        const accessToken = await getAccessTokenSilently();
+        const response = await lawsuitResource.getRevisions(id, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
         return response.data;
       },
       enabled: !!id
@@ -192,11 +229,20 @@ const createLawsuitMutation = useMutation({
       queryFn: async () => {
         if (!id) return null;
         try {
-          const response = await lawsuitResource.getRevisions(id);
+          const accessToken = await getAccessTokenSilently();
+          const response = await lawsuitResource.getRevisions(id, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
           const innerResponse = response.data;
           if (!innerResponse || innerResponse.length === 0) return null;
           const lastRevision = innerResponse.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-          const responseRevision = await lawsuitResource.getRevisionResponse(id, lastRevision.uuid);
+          const responseRevision = await lawsuitResource.getRevisionResponse(id, lastRevision.uuid, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
           return await responseRevision.text();
         } catch (error) {
           console.error('Error fetching last revisions:', error);
@@ -219,7 +265,12 @@ const createLawsuitMutation = useMutation({
       queryKey: ['lawsuit-revision', id, uuid],
       queryFn: async () => {
         if (!id || !uuid) return null;
-        const response = await lawsuitResource.getRevisionResponse(id, uuid);
+        const accessToken = await getAccessTokenSilently();
+        const response = await lawsuitResource.getRevisionResponse(id, uuid, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
         return response.data;
       },
       enabled: !!(id && uuid)
@@ -233,7 +284,7 @@ const createLawsuitMutation = useMutation({
     try {
       setLoading(true);
       console.log(`Iniciando generación de documento para caso ID: ${id}`);
-      
+      const accessToken = await getAccessTokenSilently();
       const response = await lawsuitResource.request({
         path: `/lawsuit/${id}/generate`,
         method: 'POST',
@@ -241,7 +292,8 @@ const createLawsuitMutation = useMutation({
         headers: {
           'Content-Type': 'application/json',
           'Accept': '*/*',
-        },
+          Authorization: `Bearer ${accessToken}`,
+        }
       });
 
       if (!response.ok) {

@@ -5,8 +5,9 @@ import MainLayout from '@/components/layout/MainLayout';
 import CaseCard from '@/components/cases/CaseCard';
 import { useLawsuits } from '@/hooks/useLawsuits';
 import { parseISO } from 'date-fns';
+import { useAuth0, withAuthenticationRequired } from '@auth0/auth0-react'
 
-export default function HistoryPage() {
+const HistoryPage = () => {
   const { lawsuits, isLoadingLawsuits } = useLawsuits();
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all'); // 'all', 'recent'
@@ -93,7 +94,7 @@ export default function HistoryPage() {
               ? 'No se encontraron casos en el historial que coincidan con tu búsqueda'
               : 'No tienes casos finalizados en el historial'}
           </p>
-          <Link href="/dashboard">
+          <Link href="/">
             <button className="btn-primary">Volver al Dashboard</button>
           </Link>
         </div>
@@ -137,3 +138,5 @@ export default function HistoryPage() {
     </MainLayout>
   );
 }
+
+export default withAuthenticationRequired(HistoryPage)
