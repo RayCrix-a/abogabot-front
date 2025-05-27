@@ -553,7 +553,7 @@ const onSubmit = async (data) => {
     // Llamada a la API
     await createLawsuit(lawsuitRequest);
     toast.success('Caso creado exitosamente');
-    router.push('/dashboard');
+    router.push('/');
     
   } catch (error) {
     console.error('🔥 Error completo:', error);

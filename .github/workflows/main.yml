@@ -25,6 +25,9 @@ jobs:
     - name: Build project
       env:
         NEXT_PUBLIC_ABOGABOT_API_URL: ${{ vars.NEXT_PUBLIC_ABOGABOT_API_URL }}
+        NEXT_PUBLIC_OAUTH2_DOMAIN: ${{ vars.NEXT_PUBLIC_OAUTH2_DOMAIN }}
+        NEXT_PUBLIC_OAUTH2_CLIENT_ID: ${{ vars.NEXT_PUBLIC_OAUTH2_CLIENT_ID }}
+        NEXT_PUBLIC_OAUTH2_AUDIENCE: ${{ vars.NEXT_PUBLIC_OAUTH2_AUDIENCE }}
       run: npm run build
     
     - name: Upload build artifacts
@@ -55,12 +58,7 @@ jobs:
       
     - name: Sync Files to S3
       run: |
-        LOCAL_DIR="./out"
-        aws s3 sync $LOCAL_DIR s3://$BUCKET_NAME/ --exclude "*.html"
-        find "$LOCAL_DIR" -type f -name "*.html" | while read -r file; do
-          base_filename=$(basename "$file" .html)
-          aws s3 cp "$file" "s3://$BUCKET_NAME/$base_filename" --content-type "text/html"
-        done
+        aws s3 sync "./out" s3://$BUCKET_NAME/
 
     - name: Invalidate CloudFront Cache
       run: |

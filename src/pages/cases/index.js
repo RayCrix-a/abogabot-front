@@ -4,8 +4,9 @@ import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import CaseCard from '@/components/cases/CaseCard';
 import { useLawsuits } from '@/hooks/useLawsuits';
+import { useAuth0, withAuthenticationRequired } from '@auth0/auth0-react'
 
-export default function CasesIndex() {
+const CasesIndex = () => {
   const { lawsuits, isLoadingLawsuits } = useLawsuits();
   const [searchTerm, setSearchTerm] = useState('');  const [filter, setFilter] = useState('all'); // 'all', 'active', 'pending'
 
@@ -94,3 +95,5 @@ export default function CasesIndex() {
     </MainLayout>
   );
 }
+
+export default withAuthenticationRequired(CasesIndex)

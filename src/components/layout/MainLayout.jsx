@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
-import { useAuth } from '@/context/AuthContext';
+import { withAuthenticationRequired } from '@auth0/auth0-react'
 
 const MainLayout = ({ children, title, description }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -26,29 +23,9 @@ const MainLayout = ({ children, title, description }) => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  // Redirigir a login si no está autenticado
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated && router.pathname !== '/login') {
-      router.push('/login');
-    }
-  }, [isLoading, isAuthenticated, router]);
 
   // No renderizan la interfaz hasta que estemos en el cliente
   if (!isMounted) {
-    return null;
-  }
-
-  // Mostrar spinner mientras se verifica la autenticación
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-dark">
-        <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
-
-  // Si no está autenticado, no renderizar nada mientras se redirige
-  if (!isAuthenticated) {
     return null;
   }
 
@@ -84,4 +61,4 @@ const MainLayout = ({ children, title, description }) => {
   );
 };
 
-export default MainLayout;
+export default withAuthenticationRequired(MainLayout);

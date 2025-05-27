@@ -6,8 +6,11 @@ import {
   representativeResource 
 } from '@/lib/apiClient';
 import { toast } from 'react-toastify';
+import { useAuth0 } from '@auth0/auth0-react'
+
 
 export const useParticipants = () => {
+  const { user, getAccessTokenSilently } = useAuth0();
   const queryClient = useQueryClient();
 
   // Queries para obtener los participantes con datos completos
@@ -18,13 +21,22 @@ export const useParticipants = () => {
     queryKey: ['plaintiffs'],
     queryFn: async () => {
       // Primero obtenemos la lista básica
-      const response = await plaintiffResource.getAllPlaintiffs();
+      const accessToken = await getAccessTokenSilently();
+      const response = await plaintiffResource.getAllPlaintiffs({
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       const basicList = response.data;
       
       // Luego obtenemos los datos completos de cada demandante
       const detailedPromises = basicList.map(async (plaintiff) => {
         try {
-          const detailResponse = await plaintiffResource.getPlaintiff(plaintiff.id);
+          const detailResponse = await plaintiffResource.getPlaintiff(plaintiff.id, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
           return detailResponse.data;
         } catch (error) {
           console.error(`Error al obtener detalles del demandante ${plaintiff.id}:`, error);
@@ -45,13 +57,22 @@ export const useParticipants = () => {
     queryKey: ['defendants'],
     queryFn: async () => {
       // Primero obtenemos la lista básica
-      const response = await defendantResource.getAllDefendants();
+      const accessToken = await getAccessTokenSilently();
+      const response = await defendantResource.getAllDefendants({
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       const basicList = response.data;
       
       // Luego obtenemos los datos completos de cada demandado
       const detailedPromises = basicList.map(async (defendant) => {
         try {
-          const detailResponse = await defendantResource.getDefendant(defendant.id);
+          const detailResponse = await defendantResource.getDefendant(defendant.id, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
           return detailResponse.data;
         } catch (error) {
           console.error(`Error al obtener detalles del demandado ${defendant.id}:`, error);
@@ -72,13 +93,22 @@ export const useParticipants = () => {
     queryKey: ['lawyers'],
     queryFn: async () => {
       // Primero obtenemos la lista básica
-      const response = await lawyerResource.getAllLawyers();
+      const accessToken = await getAccessTokenSilently();
+      const response = await lawyerResource.getAllLawyers({
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       const basicList = response.data;
       
       // Luego obtenemos los datos completos de cada abogado
       const detailedPromises = basicList.map(async (lawyer) => {
         try {
-          const detailResponse = await lawyerResource.getLawyer(lawyer.id);
+          const detailResponse = await lawyerResource.getLawyer(lawyer.id, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
           return detailResponse.data;
         } catch (error) {
           console.error(`Error al obtener detalles del abogado ${lawyer.id}:`, error);
@@ -99,13 +129,22 @@ export const useParticipants = () => {
     queryKey: ['representatives'],
     queryFn: async () => {
       // Primero obtenemos la lista básica
-      const response = await representativeResource.getAllRepresentatives();
+      const accessToken = await getAccessTokenSilently();
+      const response = await representativeResource.getAllRepresentatives({
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       const basicList = response.data;
       
       // Luego obtenemos los datos completos de cada representante
       const detailedPromises = basicList.map(async (representative) => {
         try {
-          const detailResponse = await representativeResource.getRepresentative(representative.id);
+          const detailResponse = await representativeResource.getRepresentative(representative.id, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
           return detailResponse.data;
         } catch (error) {
           console.error(`Error al obtener detalles del representante ${representative.id}:`, error);
@@ -122,7 +161,12 @@ export const useParticipants = () => {
   // Mutaciones para crear participantes
   const createPlaintiffMutation = useMutation({
     mutationFn: async (data) => {
-      const response = await plaintiffResource.createPlaintiff(data);
+      const accessToken = await getAccessTokenSilently();
+      const response = await plaintiffResource.createPlaintiff(data, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: () => {
@@ -136,7 +180,12 @@ export const useParticipants = () => {
 
   const createDefendantMutation = useMutation({
     mutationFn: async (data) => {
-      const response = await defendantResource.createDefendant(data);
+      const accessToken = await getAccessTokenSilently();
+      const response = await defendantResource.createDefendant(data, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: () => {
@@ -150,7 +199,12 @@ export const useParticipants = () => {
 
   const createLawyerMutation = useMutation({
     mutationFn: async (data) => {
-      const response = await lawyerResource.createLawyer(data);
+      const accessToken = await getAccessTokenSilently();
+      const response = await lawyerResource.createLawyer(data, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: () => {
@@ -164,7 +218,12 @@ export const useParticipants = () => {
 
   const createRepresentativeMutation = useMutation({
     mutationFn: async (data) => {
-      const response = await representativeResource.createRepresentative(data);
+      const accessToken = await getAccessTokenSilently();
+      const response = await representativeResource.createRepresentative(data, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: () => {
@@ -179,7 +238,12 @@ export const useParticipants = () => {
   // Mutaciones para actualizar participantes
   const updatePlaintiffMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const response = await plaintiffResource.updatePlaintiff(id, data);
+      const accessToken = await getAccessTokenSilently();
+      const response = await plaintiffResource.updatePlaintiff(id, data, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: () => {
@@ -193,7 +257,12 @@ export const useParticipants = () => {
 
   const updateDefendantMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const response = await defendantResource.updateDefendant(id, data);
+      const accessToken = await getAccessTokenSilently();
+      const response = await defendantResource.updateDefendant(id, data, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: () => {
@@ -207,7 +276,12 @@ export const useParticipants = () => {
 
   const updateLawyerMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const response = await lawyerResource.updateLawyer(id, data);
+      const accessToken = await getAccessTokenSilently();
+      const response = await lawyerResource.updateLawyer(id, data, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: () => {
@@ -221,7 +295,12 @@ export const useParticipants = () => {
 
   const updateRepresentativeMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const response = await representativeResource.updateRepresentative(id, data);
+      const accessToken = await getAccessTokenSilently();
+      const response = await representativeResource.updateRepresentative(id, data, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: () => {
@@ -236,7 +315,12 @@ export const useParticipants = () => {
   // Mutaciones para eliminar participantes
   const deletePlaintiffMutation = useMutation({
     mutationFn: async (id) => {
-      const response = await plaintiffResource.deletePlaintiff(id);
+      const accessToken = await getAccessTokenSilently();
+      const response = await plaintiffResource.deletePlaintiff(id, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: () => {
@@ -250,7 +334,12 @@ export const useParticipants = () => {
 
   const deleteDefendantMutation = useMutation({
     mutationFn: async (id) => {
-      const response = await defendantResource.deleteDefendant(id);
+      const accessToken = await getAccessTokenSilently();
+      const response = await defendantResource.deleteDefendant(id, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: () => {
@@ -264,7 +353,12 @@ export const useParticipants = () => {
 
   const deleteLawyerMutation = useMutation({
     mutationFn: async (id) => {
-      const response = await lawyerResource.deleteLawyer(id);
+      const accessToken = await getAccessTokenSilently();
+      const response = await lawyerResource.deleteLawyer(id, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: () => {
@@ -278,7 +372,12 @@ export const useParticipants = () => {
 
   const deleteRepresentativeMutation = useMutation({
     mutationFn: async (id) => {
-      const response = await representativeResource.deleteRepresentative(id);
+      const accessToken = await getAccessTokenSilently();
+      const response = await representativeResource.deleteRepresentative(id, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
       return response.data;
     },
     onSuccess: () => {

@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { proceedingTypeResource } from '@/lib/apiClient';
 import { toast } from 'react-toastify';
+import { useAuth0 } from '@auth0/auth0-react'
 
 /**
  * Hook para gestionar los tipos de procedimiento
  * Proporciona funciones para obtener los tipos de procedimientos
  */
 export const useProceedingTypes = () => {
+  const { user, getAccessTokenSilently } = useAuth0();
   const { 
     data: proceedingTypes = [], 
     isLoading, 
@@ -15,7 +17,12 @@ export const useProceedingTypes = () => {
     queryKey: ['proceedingTypes'],
     queryFn: async () => {
       try {
-        const response = await proceedingTypeResource.getAllProceedingTypes();
+        const accessToken = await getAccessTokenSilently();
+        const response = await proceedingTypeResource.getAllProceedingTypes({
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
         return response.data;
       } catch (error) {
         console.error('Error al obtener tipos de procedimiento:', error);
