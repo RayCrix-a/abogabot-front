@@ -90,7 +90,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
                 recentCases.map((caseItem) => (
                   <RecentCaseItem
                     key={caseItem.id}
-                    title={caseItem.subjectMatter} // Cambio aquí
+                    title={caseItem.title ?? 'Caso sin Titulo'} // Cambio aquí
                     date={`Creado: ${new Date(caseItem.createdAt).toLocaleDateString()}`}
                     path={`/cases/${caseItem.id}`}
                   />
