@@ -146,7 +146,7 @@ const handleDelete = async () => {
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">{caseData.subjectMatter || 'Caso sin título'}</h1>
+          <h1 className="text-2xl font-bold text-white">{caseData.title || 'Caso sin título'}</h1>
           <p className="text-gray-400">
             Comenzó el {formatDate(caseData.createdAt)}
           </p>
@@ -214,7 +214,7 @@ const handleDelete = async () => {
             <tbody>
               <tr className="border-b border-gray-700">
                 <td className="py-2 text-gray-400">Tipo de procedimiento</td>
-                <td className="py-2 text-white">{caseData.proceedingType?.description || 'No especificado'}</td>
+                <td className="py-2 text-white">{caseData.proceedingType || 'No especificado'}</td>
               </tr>
               <tr className="border-b border-gray-700">
                 <td className="py-2 text-gray-400">Materia legal</td>

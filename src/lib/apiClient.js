@@ -3,6 +3,7 @@ import { LawsuitResource } from '@/generated/api/LawsuitResource';
 import { LawyerResource } from '@/generated/api/LawyerResource';
 import { PlaintiffResource } from '@/generated/api/PlaintiffResource';
 import { ProceedingTypeResource } from '@/generated/api/ProceedingTypeResource';
+import { SubjectMatterResource } from '@/generated/api/SubjectMatterResource';
 import { RegulationResource } from '@/generated/api/RegulationResource';
 import { RepresentativeResource } from '@/generated/api/RepresentativeResource';
 
@@ -54,6 +55,16 @@ export const proceedingTypeResource = new ProceedingTypeResource({
     },
   },
 });
+
+export const subjectMatterResource = new SubjectMatterResource({
+  baseUrl: API_BASE_URL,
+  baseApiParams: {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  },
+});
+
 
 export const regulationResource = new RegulationResource({
   baseUrl: API_BASE_URL,

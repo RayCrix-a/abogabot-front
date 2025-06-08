@@ -40,8 +40,9 @@ const CaseCard = ({ caseData }) => {
 
   // Para manejar posibles formatos de datos diferentes
   const id = caseData.id;
-  const title = caseData.subjectMatter || caseData.title || 'Caso sin título';
-  const description = caseData.narrative || caseData.description || '';
+  const title = caseData.title || 'Caso sin título';
+  const subjectMatter = caseData.subjectMatter || 'Caso sin materia legal';
+  const proceedingType = caseData.proceedingType || 'Tipo de procedimiento no especificado';
   const createdAt = caseData.createdAt;
   const status = getStatus();
   
@@ -82,18 +83,20 @@ const CaseCard = ({ caseData }) => {
             <span className={`ml-2 px-3 py-1 rounded-md text-xs font-medium flex-shrink-0 ${getStatusColor(status)}`}>
               {status}
             </span>
-          </div>
-          
-          <p className="text-sm text-gray-400 mb-4 line-clamp-2 min-h-[40px]">
-            {description}
-          </p>
-          
+          </div>          
           <div className="border-t border-gray-700 pt-3 mt-2">
             <div className="flex flex-wrap gap-y-2 text-xs text-gray-400">
               <div className="flex items-center w-full">
                 <FiFileText className="mr-2 text-primary" />
-                <span className="mr-2 font-medium">Tipo:</span> 
-                {caseData.proceedingType?.description || 'No especificado'}
+                <span className="mr-2 font-medium">Caso Nº:</span>{id}
+              </div>
+              <div className="flex items-center w-full">
+                <FiFileText className="mr-2 text-primary" />
+                <span className="mr-2 font-medium">Tipo:</span>{proceedingType}
+              </div>
+              <div className="flex items-center w-full">
+                <FiFileText className="mr-2 text-primary" />
+                <span className="mr-2 font-medium">Materia:</span>{subjectMatter}
               </div>
               <div className="flex items-center w-full">
                 <FiClock className="mr-2 text-primary" />

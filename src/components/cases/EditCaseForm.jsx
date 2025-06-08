@@ -8,9 +8,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useLawsuits } from '@/hooks/useLawsuits';
 import { useParticipants } from '@/hooks/useParticipants';
 import { useProceedingTypes } from '@/hooks/useProceedingTypes';
+import { useSubjectMatters } from '@/hooks/useSubjectMatters';
+import { title } from 'process';
 
 // Esquema de validación para el formulario de edición de caso
 const editCaseSchema = z.object({
+  title: z.string().max(100, 'El título no puede exceder 100 caracteres'),
   proceedingType: z.string().min(1, 'Seleccione un tipo de procedimiento'),
   subjectMatter: z.string().min(1, 'Ingrese una materia legal'),
   plaintiffs: z.array(z.string()).min(1, 'Debe seleccionar al menos un demandante'),
@@ -41,11 +44,13 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     isLoadingRepresentatives
   } = useParticipants();
   const { proceedingTypeOptions, isLoading: isLoadingProceedingTypes } = useProceedingTypes();
+  const { subjectMatterOptions, isLoading: isLoadingsubjectMatters } = useSubjectMatters();
   
   // Preparar valores iniciales para el formulario
   const getInitialValues = () => {
     return {
-      proceedingType: caseData.proceedingType?.name || '',
+      title: caseData.title || '',
+      proceedingType: caseData.proceedingType || '',
       subjectMatter: caseData.subjectMatter || '',
       plaintiffs: caseData.plaintiffs?.map(p => p.idNumber) || [],
       attorneyOfRecord: caseData.attorneyOfRecord?.idNumber || '',
@@ -116,6 +121,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
       
       // Transformar datos al formato esperado por la API según el swagger
       const lawsuitRequest = {
+        title: data.title,
         proceedingType: data.proceedingType,
         subjectMatter: data.subjectMatter,
         status: caseData.status, // Mantener el status actual del caso
@@ -174,7 +180,19 @@ const EditCaseForm = ({ caseData, onCancel }) => {
       </div>
       
       {/* Tipo de procedimiento y materia legal */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+        <div>
+          <label className="block mb-1 text-gray-300">Título del caso</label>
+          <input 
+            type="text"
+            {...register('title')}
+            placeholder="Ingrese el título del caso"
+            className={`input-field ${errors.title ? 'border-red-500' : ''}`}
+          />
+          {errors.title && (
+            <p className="mt-1 text-sm text-red-500">{errors.title.message}</p>
+          )}
+        </div>
         <div>
           <label className="block mb-1 text-gray-300">Tipo de procedimiento</label>
           <select 
@@ -189,18 +207,23 @@ const EditCaseForm = ({ caseData, onCancel }) => {
             ))}
           </select>
           {errors.proceedingType && (
-            <p className="mt-1 text-sm text-red-500">{errors.proceedingType.message}</p>
+            <p className="mt-1 text-sm text-red-500">{errors.proceedingType}</p>
           )}
         </div>
         
         <div>
           <label className="block mb-1 text-gray-300">Materia legal</label>
-          <input 
-            type="text" 
+          <select 
             {...register('subjectMatter')}
-            placeholder="Ej: Prescripción extintiva"
             className={`input-field ${errors.subjectMatter ? 'border-red-500' : ''}`}
-          />
+          >
+            <option value="">Seleccione una opción</option>
+            {subjectMatterOptions?.map(type => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
           {errors.subjectMatter && (
             <p className="mt-1 text-sm text-red-500">{errors.subjectMatter.message}</p>
           )}

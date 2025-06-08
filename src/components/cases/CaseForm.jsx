@@ -9,9 +9,11 @@ import { Plus, X as XIcon, Edit, Trash2, Save, User, PlusCircle } from 'lucide-r
 import { useLawsuits } from '@/hooks/useLawsuits'; // Cambio aquí
 import { useParticipants } from '@/hooks/useParticipants';
 import { useProceedingTypes } from '@/hooks/useProceedingTypes';
+import { title } from 'process';
 
 // Esquema de validación actualizado para múltiples participantes
 const caseSchema = z.object({
+  title: z.string().max(100, 'El título no puede exceder 100 caracteres'),
   proceedingType: z.string().min(1, 'Seleccione un tipo de procedimiento'),
   legalMatter: z.string().min(1, 'Seleccione una materia legal'),
   
@@ -525,6 +527,7 @@ const onSubmit = async (data) => {
     
     // CAMBIO: Enviar RUTs como strings al backend
     const lawsuitRequest = {
+      title: data.title,
       proceedingType: data.proceedingType,
       subjectMatter: data.legalMatter,
       plaintiffs: plaintiffRuts,                    // Array de RUTs como strings
@@ -935,6 +938,18 @@ const handleAddClaim = (claim) => {
         <div className="bg-[#0F1625] rounded-xl p-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Tipo de procedimiento y materia legal */}
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+              <div>
+                <label className="block mb-4 text-white font-medium">Título Caso</label>
+                <input 
+                  {...register('title')}
+                  placeholder=""
+                  className={`w-full bg-[#080d1a] text-white p-3 rounded-md border ${
+                    errors.title ? 'border-red-500' : 'border-gray-500'
+                  } hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors resize-none`}
+                />
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block mb-4 text-white font-medium">Tipo de procedimiento</label>
