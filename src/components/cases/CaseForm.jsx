@@ -854,8 +854,8 @@ const handleAddClaim = (claim) => {
         )}
 
         {showResults && searchTerm && results.length === 0 && (
-          <div className="absolute z-10 w-full mt-1 bg-[#2D3342] border border-gray-600 rounded-md shadow-lg p-2.5 text-center text-sm text-gray-400">
-            No se encontraron peticiones
+          <div className="absolute z-10 w-full mt-1 bg-[#2D3342] border border-gray-600 rounded-md shadow-lg p-2.5 text-center text-sm text-[#ffffff]">
+            ⚠️ No se encontraron peticiones, dale al botón "➕" para agregar una nueva ⚠️ ➡️
           </div>
         )}
       </div>
