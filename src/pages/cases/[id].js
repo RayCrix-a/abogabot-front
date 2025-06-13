@@ -75,22 +75,29 @@ export const CaseDetail = () => {
     }
   };
 
-  // Manejar cambio de estado del caso
+  // CORRECCIÓN PRINCIPAL: Manejar cambio de estado del caso
   const handleStatusChange = async (newStatus) => {
     try {
-      if (!id || !lawsuit) return;
+      if (!id || !lawsuit) {
+        console.error('No se puede cambiar estado: falta ID o datos del caso');
+        return;
+      }
       
+      // CORRECCIÓN: Construir datos correctamente basándose en la estructura actual del caso
       const updateData = {
-        proceedingType: lawsuit.proceedingType.name,
-        subjectMatter: lawsuit.subjectMatter,
+        title: lawsuit.title || '',
+        // CORRECCIÓN: Manejar proceedingType correctamente
+        proceedingType: lawsuit.proceedingType?.name || lawsuit.proceedingType || '',
+        subjectMatter: lawsuit.subjectMatter || '',
         status: newStatus,
-        plaintiffs: lawsuit.plaintiffs.map(p => p.idNumber),
-        defendants: lawsuit.defendants.map(d => d.idNumber),
+        // CORRECCIÓN: Asegurar que los arrays están definidos
+        plaintiffs: (lawsuit.plaintiffs || []).map(p => p.idNumber),
+        defendants: (lawsuit.defendants || []).map(d => d.idNumber),
         attorneyOfRecord: lawsuit.attorneyOfRecord?.idNumber || undefined,
         representative: lawsuit.representative?.idNumber || undefined,
-        claims: lawsuit.claims,
-        institution: lawsuit.institution,
-        narrative: lawsuit.narrative
+        claims: lawsuit.claims || [],
+        institution: lawsuit.institution || '',
+        narrative: lawsuit.narrative || ''
       };
       
       console.log('Actualizando estado con ID:', id, 'y datos:', updateData);

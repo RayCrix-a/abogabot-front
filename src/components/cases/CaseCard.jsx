@@ -7,6 +7,7 @@ const CaseCard = ({ caseData }) => {
   // Función para formatear la fecha
   const formatDate = (dateString) => {
     try {
+      if (!dateString) return 'Fecha no disponible';
       const date = parseISO(dateString);
       return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
     } catch (error) {
@@ -14,14 +15,21 @@ const CaseCard = ({ caseData }) => {
       return dateString || 'Fecha no disponible';
     }
   };
-  // Función para determinar el estado
+
+  // Función para determinar el estado - CORREGIDA para usar el estado real
   const getStatus = () => {
+    // Si no hay status, usar valor por defecto
+    if (!caseData?.status) {
+      return 'En curso';
+    }
+
     const statusMap = {
       'IN_PROGRESS': 'En curso',
       'PENDING': 'Pendiente',
       'FINALIZED': 'Finalizado',
       'DRAFT': 'Borrador'
     };
+
     return statusMap[caseData.status] || 'En curso';
   };
 
@@ -39,21 +47,48 @@ const CaseCard = ({ caseData }) => {
   };
 
   // Para manejar posibles formatos de datos diferentes
-  const id = caseData.id;
-  const title = caseData.title || 'Caso sin título';
-  const subjectMatter = caseData.subjectMatter || 'Caso sin materia legal';
-  const proceedingType = caseData.proceedingType || 'Tipo de procedimiento no especificado';
-  const createdAt = caseData.createdAt;
-  const status = getStatus();
+  const id = caseData?.id;
+  const title = caseData?.title || 'Caso sin título';
+  const subjectMatter = caseData?.subjectMatter || 'Caso sin materia legal';
   
+  // CORRECCIÓN: Manejo mejorado del tipo de procedimiento
+  const getProceedingType = () => {
+    const { proceedingType } = caseData || {};
+    
+    if (!proceedingType) {
+      return 'Tipo de procedimiento no especificado';
+    }
+    
+    // Si es un objeto con description
+    if (typeof proceedingType === 'object' && proceedingType.description) {
+      return proceedingType.description;
+    }
+    
+    // Si es un objeto con name
+    if (typeof proceedingType === 'object' && proceedingType.name) {
+      return proceedingType.name;
+    }
+    
+    // Si es un string
+    if (typeof proceedingType === 'string') {
+      return proceedingType;
+    }
+    
+    return 'Tipo de procedimiento no especificado';
+  };
+  
+  const createdAt = caseData?.createdAt;
+  const status = getStatus();
+
   // Construir texto de partes involucradas
   const getParties = () => {
+    const { plaintiffs, defendants } = caseData || {};
     let parties = '';
     
     // Si tenemos datos de plaintiffs y defendants
-    if (caseData.plaintiffs && caseData.defendants) {
-      const plaintiffNames = caseData.plaintiffs.map(p => p.fullName);
-      const defendantNames = caseData.defendants.map(d => d.fullName);
+    if (plaintiffs && defendants) {
+      const plaintiffNames = plaintiffs.map(p => p.fullName);
+      const defendantNames = defendants.map(d => d.fullName);
       
       if (plaintiffNames.length > 0 && defendantNames.length > 0) {
         parties = `${plaintiffNames[0]} vs. ${defendantNames[0]}`;
@@ -68,7 +103,7 @@ const CaseCard = ({ caseData }) => {
     }
     
     // Si no tenemos datos de la API, usar el valor existente o un valor por defecto
-    return caseData.parties || 'Partes no especificadas';
+    return caseData?.parties || 'Partes no especificadas';
   };
 
   return (
@@ -92,7 +127,7 @@ const CaseCard = ({ caseData }) => {
               </div>
               <div className="flex items-center w-full">
                 <FiFileText className="mr-2 text-primary" />
-                <span className="mr-2 font-medium">Tipo:</span>{proceedingType}
+                <span className="mr-2 font-medium">Tipo:</span>{getProceedingType()}
               </div>
               <div className="flex items-center w-full">
                 <FiFileText className="mr-2 text-primary" />
