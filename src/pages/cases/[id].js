@@ -19,6 +19,9 @@ export const CaseDetail = () => {
   const [markdownContent, setMarkdownContent] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   
+  // CAMBIO PRINCIPAL: Mover el estado isEditing aquí
+  const [isEditing, setIsEditing] = useState(false);
+  
   // Obtener datos del caso usando los nuevos hooks
   const { 
     useLawsuit, 
@@ -31,7 +34,6 @@ export const CaseDetail = () => {
   } = useLawsuits();
   
   const { data: lawsuit, isLoading: isLoadingLawsuit, error: lawsuitError } = useLawsuit(id);
-
   const { data: revision, isLoading: isLoadingRevision, error: revisiontError } = useLawsuitLastRevisions(id);
 
   useEffect(() => {
@@ -39,91 +41,85 @@ export const CaseDetail = () => {
     if (revision) {
       setMarkdownContent(revision);
     }
-  }, [revision]);  // Manejar eliminación de caso  
-const handleDeleteCase = async () => {
-  if (!id) {
-    console.error('No se puede eliminar caso: ID no especificado');
-    return false;
-  }
-  
-  try {
-    console.log('Intentando eliminar caso con ID:', id);
-    // Asegurarnos de que estamos pasando el ID correctamente
-    const numericId = parseInt(id, 10);
-    
-    if (isNaN(numericId)) {
-      console.log('Usando ID como string:', id);
-      await deleteLawsuit(id);
-    } else {
-      console.log('Usando ID como número:', numericId);
-      await deleteLawsuit(numericId);
+  }, [revision]);
+
+  // Manejar eliminación de caso  
+  const handleDeleteCase = async () => {
+    if (!id) {
+      console.error('No se puede eliminar caso: ID no especificado');
+      return false;
     }
     
-    console.log('Operación de eliminación completada exitosamente');
-    // Desactivar las consultas para evitar que se sigan actualizando
-    queryClient.removeQueries(['lawsuit', id]);
-    
-    // En caso de éxito, redirigir al dashboard
-    toast.success('Caso eliminado exitosamente');
-    router.push('/');
-    return true;
-  } catch (error) {
-    console.error('Error detallado al eliminar demanda:', error);
-    toast.error(`Error al eliminar el caso: ${error.message || 'Error desconocido'}`);
-    return false;
-  }
-};
-  // Manejar cambio de estado del caso
-const handleStatusChange = async (newStatus) => {
-  try {
-    if (!id || !lawsuit) return;
-    
-    // Creamos un objeto que cumple con la interfaz LawsuitRequest según el swagger
-    const updateData = {
-      proceedingType: lawsuit.proceedingType.name,
-      subjectMatter: lawsuit.subjectMatter,
-      status: newStatus, // El nuevo status que queremos aplicar
-      plaintiffs: lawsuit.plaintiffs.map(p => p.idNumber),
-      defendants: lawsuit.defendants.map(d => d.idNumber),
-      attorneyOfRecord: lawsuit.attorneyOfRecord?.idNumber || undefined,
-      representative: lawsuit.representative?.idNumber || undefined,
-      claims: lawsuit.claims,
-      institution: lawsuit.institution,
-      narrative: lawsuit.narrative
-    };
-    
-    console.log('Actualizando estado con ID:', id, 'y datos:', updateData);
-    
-    // CORRECCIÓN: Pasar el objeto con id y data como espera la mutación
-    await updateLawsuit({ id: parseInt(id, 10), data: updateData });
-  } catch (error) {
-    console.error('Error al cambiar el estado:', error);
-    toast.error(`Error al cambiar el estado: ${error.message || 'Error desconocido'}`);
-  }
-};
+    try {
+      console.log('Intentando eliminar caso con ID:', id);
+      const numericId = parseInt(id, 10);
+      
+      if (isNaN(numericId)) {
+        console.log('Usando ID como string:', id);
+        await deleteLawsuit(id);
+      } else {
+        console.log('Usando ID como número:', numericId);
+        await deleteLawsuit(numericId);
+      }
+      
+      console.log('Operación de eliminación completada exitosamente');
+      queryClient.removeQueries(['lawsuit', id]);
+      
+      toast.success('Caso eliminado exitosamente');
+      router.push('/');
+      return true;
+    } catch (error) {
+      console.error('Error detallado al eliminar demanda:', error);
+      toast.error(`Error al eliminar el caso: ${error.message || 'Error desconocido'}`);
+      return false;
+    }
+  };
 
-// Manejar edición del caso
-const handleEditCase = async (updatedData) => {
-  try {
-    // CORRECCIÓN: También aquí pasar el objeto correcto
-    await updateLawsuit({ id: parseInt(id, 10), data: updatedData });
-  } catch (error) {
-    console.error('Error al actualizar el caso:', error);
-    toast.error(`Error al actualizar el caso: ${error.message || 'Error desconocido'}`);
-  }
-};
+  // Manejar cambio de estado del caso
+  const handleStatusChange = async (newStatus) => {
+    try {
+      if (!id || !lawsuit) return;
+      
+      const updateData = {
+        proceedingType: lawsuit.proceedingType.name,
+        subjectMatter: lawsuit.subjectMatter,
+        status: newStatus,
+        plaintiffs: lawsuit.plaintiffs.map(p => p.idNumber),
+        defendants: lawsuit.defendants.map(d => d.idNumber),
+        attorneyOfRecord: lawsuit.attorneyOfRecord?.idNumber || undefined,
+        representative: lawsuit.representative?.idNumber || undefined,
+        claims: lawsuit.claims,
+        institution: lawsuit.institution,
+        narrative: lawsuit.narrative
+      };
+      
+      console.log('Actualizando estado con ID:', id, 'y datos:', updateData);
+      await updateLawsuit({ id: parseInt(id, 10), data: updateData });
+    } catch (error) {
+      console.error('Error al cambiar el estado:', error);
+      toast.error(`Error al cambiar el estado: ${error.message || 'Error desconocido'}`);
+    }
+  };
+
+  // Manejar edición del caso
+  const handleEditCase = async (updatedData) => {
+    try {
+      await updateLawsuit({ id: parseInt(id, 10), data: updatedData });
+    } catch (error) {
+      console.error('Error al actualizar el caso:', error);
+      toast.error(`Error al actualizar el caso: ${error.message || 'Error desconocido'}`);
+    }
+  };
 
   // Generar documento
   const handleGenerateDocument = async () => {
     if (!id) return;
     
-    // Limpiar el contenido antes de generar
     setMarkdownContent('');
     setIsGenerating(true);
     
     try {
       await generate(id, (chunk) => {
-        // Actualizar el contenido del documento con cada chunk recibido
         setMarkdownContent(prev => prev + chunk);
       });
       toast.success('Documento generado exitosamente');
@@ -133,6 +129,17 @@ const handleEditCase = async (updatedData) => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  // CAMBIO: Funciones para manejar el modo edición
+  const startEditing = () => {
+    console.log('🚀 Iniciando modo edición desde página principal');
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    console.log('📝 Cancelando edición desde página principal');
+    setIsEditing(false);
   };
 
   // Si está cargando, mostrar indicador
@@ -194,56 +201,64 @@ const handleEditCase = async (updatedData) => {
         </Link>
       </div>
 
-      {/* Detalles del caso */}
+      {/* CAMBIO: Pasar el estado de edición como props */}
       <CaseDetails 
         caseData={lawsuit} 
         onDelete={handleDeleteCase} 
         onStatusChange={handleStatusChange}
         onEdit={handleEditCase}
+        isEditing={isEditing}
+        onStartEditing={startEditing}
+        onCancelEditing={cancelEditing}
       />
 
-      {/* Pestañas */}
-      <div className="flex border-b border-gray-700 mt-6 mb-4">
-        <button
-          className={`py-2 px-4 font-medium flex items-center ${
-            activeTab === 'document'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-gray-400 hover:text-white'
-          }`}
-          onClick={() => setActiveTab('document')}
-        >
-          <FiFile className="mr-2" />
-          Documento
-        </button>
-        <button
-          className={`py-2 px-4 font-medium flex items-center ${
-            activeTab === 'chat'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-gray-400 hover:text-white'
-          }`}
-          onClick={() => setActiveTab('chat')}
-        >
-          <FiMessageCircle className="mr-2" />
-          Chat
-        </button>
-      </div>
+      {/* CAMBIO PRINCIPAL: Solo mostrar pestañas y contenido si NO estamos editando */}
+      {!isEditing && (
+        <>
+          {/* Pestañas */}
+          <div className="flex border-b border-gray-700 mt-6 mb-4">
+            <button
+              className={`py-2 px-4 font-medium flex items-center ${
+                activeTab === 'document'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+              onClick={() => setActiveTab('document')}
+            >
+              <FiFile className="mr-2" />
+              Documento
+            </button>
+            <button
+              className={`py-2 px-4 font-medium flex items-center ${
+                activeTab === 'chat'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+              onClick={() => setActiveTab('chat')}
+            >
+              <FiMessageCircle className="mr-2" />
+              Chat
+            </button>
+          </div>
 
-      {/* Contenido según pestaña activa */}
-      <div className="bg-dark-lighter rounded-lg">
-        {activeTab === 'document' ? (
-          <DocumentViewer 
-            documentData={{
-              title: `Demanda: ${lawsuit.subjectMatter}`,
-              content: markdownContent,
-              status: 'En curso'
-            }} 
-            lawsuit={lawsuit}
-            onGenerateDocument={handleGenerateDocument}
-          />
-        ) : (
-          <ChatBox caseId={id} />
-        )}
-      </div>
+          {/* Contenido según pestaña activa */}
+          <div className="bg-dark-lighter rounded-lg">
+            {activeTab === 'document' ? (
+              <DocumentViewer 
+                documentData={{
+                  title: `Demanda: ${lawsuit.subjectMatter}`,
+                  content: markdownContent,
+                  status: 'En curso'
+                }} 
+                lawsuit={lawsuit}
+                onGenerateDocument={handleGenerateDocument}
+              />
+            ) : (
+              <ChatBox caseId={id} />
+            )}
+          </div>
+        </>
+      )}
     </MainLayout>
   );
 }

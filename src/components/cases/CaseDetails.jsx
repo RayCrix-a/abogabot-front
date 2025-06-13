@@ -5,10 +5,29 @@ import { FiEdit, FiTrash2, FiMessageSquare } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import EditCaseForm from './EditCaseForm';
 
-const CaseDetails = ({ caseData, onDelete, onStatusChange }) => {
+const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEditing, onCancelEditing }) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  
+  console.log('🔍 CaseDetails render - isEditing:', isEditing); // Debug log
+  
+  // IMPORTANTE: Early return INMEDIATO para modo edición
+  if (isEditing) {
+    console.log('🎯 Renderizando SOLO EditCaseForm'); // Debug log
+    return (
+      <div className="bg-dark-lighter rounded-lg p-6">
+        <EditCaseForm 
+          caseData={caseData} 
+          onCancel={() => {
+            console.log('📝 Cancelando edición'); // Debug log
+            onCancelEditing();
+          }} 
+        />
+      </div>
+    );
+  }
+  
+  console.log('👁️ Renderizando vista normal (NO edición)'); // Debug log
   
   // Función para formatear la fecha
   const formatDate = (dateString) => {
@@ -22,47 +41,44 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange }) => {
   }; 
   
   // Función para manejar la eliminación del caso
-const handleDelete = async () => {
-  if (isConfirmingDelete) {
-    try {
-      setIsDeleting(true);
-      console.log('Usuario confirmó eliminación en CaseDetails');
-      console.log('Llamando a onDelete() - ID de caso:', caseData?.id);
-      const success = await onDelete();
-      console.log('Resultado de onDelete:', success);
-      if (success) {
+  const handleDelete = async () => {
+    if (isConfirmingDelete) {
+      try {
+        setIsDeleting(true);
+        console.log('Usuario confirmó eliminación en CaseDetails');
+        console.log('Llamando a onDelete() - ID de caso:', caseData?.id);
+        const success = await onDelete();
+        console.log('Resultado de onDelete:', success);
+        if (success) {
+          setIsConfirmingDelete(false);
+        } else {
+          toast.error('No se pudo eliminar el caso');
+          console.log('onDelete no retornó true, manteniendo estado de confirmación');
+        }
+      } catch (error) {
+        console.error('Error capturado en CaseDetails durante eliminación:', error);
+        toast.error(`Error al eliminar el caso: ${error.message || 'Error desconocido'}`);
         setIsConfirmingDelete(false);
-        // No añadimos toast aquí porque se manejará en useLawsuits.js o [id].js
-      } else {
-        toast.error('No se pudo eliminar el caso');
-        console.log('onDelete no retornó true, manteniendo estado de confirmación');
+      } finally {
+        setIsDeleting(false);
       }
-    } catch (error) {
-      console.error('Error capturado en CaseDetails durante eliminación:', error);
-      toast.error(`Error al eliminar el caso: ${error.message || 'Error desconocido'}`);
-      setIsConfirmingDelete(false); // Reset del estado para permitir intentar de nuevo
-    } finally {
-      setIsDeleting(false);
+    } else {
+      setIsConfirmingDelete(true);
     }
-  } else {
-    setIsConfirmingDelete(true);
-  }
-};
+  };
   
   // Cancelar eliminación
   const cancelDelete = () => {
     setIsConfirmingDelete(false);
   };
 
-  // Iniciar edición
+  // Iniciar edición - CON DEBUG
   const startEditing = () => {
-    setIsEditing(true);
+    console.log('🚀 Iniciando modo edición'); // Debug log
+    onStartEditing();
   };
 
-  // Cancelar edición
-  const cancelEditing = () => {
-    setIsEditing(false);
-  };  // Obtener el estado para mostrar
+  // Obtener el estado para mostrar
   const getDisplayStatus = (status) => {
     const statusMap = {
       'IN_PROGRESS': 'En curso',
@@ -71,7 +87,9 @@ const handleDelete = async () => {
       'DRAFT': 'Borrador'
     };
     return statusMap[status] || status;
-  };  // Función para cambiar el estado
+  };
+
+  // Función para cambiar el estado
   const handleStatusChange = async (event) => {
     const statusMap = {
       'En curso': 'IN_PROGRESS',
@@ -105,9 +123,9 @@ const handleDelete = async () => {
 
     } catch (error) {
       console.error('Error al cambiar el estado:', error);
-      // No mostrar toast aquí, ya se mostrará en el manejador de errores del hook
     }
   };
+
   // Función para obtener el color del estado
   const getStatusColor = (status) => {
     if (typeof status !== 'string') return 'bg-gray-700 text-gray-300';
@@ -129,18 +147,7 @@ const handleDelete = async () => {
   // Determinar el estado actual del caso
   const status = getDisplayStatus(caseData.status);
 
-  // Si estamos en modo edición, mostramos el formulario de edición
-  if (isEditing) {
-    return (
-      <div className="bg-dark-lighter rounded-lg p-6">
-        <EditCaseForm 
-          caseData={caseData} 
-          onCancel={cancelEditing} 
-        />
-      </div>
-    );
-  }
-
+  // RESTO DEL COMPONENTE - Solo se renderiza si NO estamos editando
   return (
     <div className="bg-dark-lighter rounded-lg p-6">
       {/* Encabezado */}
@@ -161,7 +168,8 @@ const handleDelete = async () => {
             <FiEdit className="w-4 h-4" />
             <span className="hidden sm:inline">Editar</span>
           </button>
-            {isConfirmingDelete ? (
+          
+          {isConfirmingDelete ? (
             <div className="flex space-x-2">
               <button
                 onClick={cancelDelete}
@@ -214,7 +222,7 @@ const handleDelete = async () => {
             <tbody>
               <tr className="border-b border-gray-700">
                 <td className="py-2 text-gray-400">Tipo de procedimiento</td>
-                <td className="py-2 text-white">{caseData.proceedingType || 'No especificado'}</td>
+                <td className="py-2 text-white">{caseData.proceedingType?.description || caseData.proceedingType || 'No especificado'}</td>
               </tr>
               <tr className="border-b border-gray-700">
                 <td className="py-2 text-gray-400">Materia legal</td>
@@ -227,7 +235,8 @@ const handleDelete = async () => {
                     <span className={`px-3 py-1 rounded-md text-sm font-medium ${getStatusColor(status)}`}>
                       {status}
                     </span>
-                      {/* Selector para cambiar estado */}                    <div className="relative">
+                    {/* Selector para cambiar estado */}                    
+                    <div className="relative">
                       <select
                         value={getDisplayStatus(caseData.status)}
                         onChange={handleStatusChange}
