@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiSearch, FiClock, FiArchive } from 'react-icons/fi';
+import { FiSearch, FiClock, FiArchive, FiArrowUp, FiArrowDown } from 'react-icons/fi';
 import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import CaseCard from '@/components/cases/CaseCard';
@@ -11,13 +11,15 @@ const HistoryPage = () => {
   const { lawsuits, isLoadingLawsuits } = useLawsuits();
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all'); // 'all', 'recent'
+  const [sortOrder, setSortOrder] = useState('newest'); // 'newest', 'oldest'
 
   // Filtrar para mostrar solo los casos finalizados
   const historyCases = (lawsuits || []).filter(c => c.status === 'FINALIZED');
 
   // Aplicamos filtros de búsqueda y tipo
-  const filteredCases = historyCases.filter(caseItem => {
-    const matchesSearch = caseItem.subjectMatter?.toLowerCase().includes(searchTerm.toLowerCase());
+  let filteredCases = historyCases.filter(caseItem => {
+    // Buscar por título de la demanda
+    const matchesSearch = caseItem.title?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
     
     if (filter === 'all') return matchesSearch;
     if (filter === 'recent') {
@@ -36,6 +38,23 @@ const HistoryPage = () => {
     return matchesSearch;
   });
 
+  // Ordenar casos según el criterio seleccionado
+  filteredCases = [...filteredCases].sort((a, b) => {
+    const dateA = new Date(a.createdAt);
+    const dateB = new Date(b.createdAt);
+    
+    if (sortOrder === 'newest') {
+      return dateB - dateA; // Más recientes primero
+    } else {
+      return dateA - dateB; // Más antiguos primero
+    }
+  });
+
+  // Función para alternar el orden
+  const toggleSortOrder = () => {
+    setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest');
+  };
+
   return (
     <MainLayout title="Historial" description="Historial de casos legales en AbogaBot">
       <div className="mb-6">
@@ -46,29 +65,49 @@ const HistoryPage = () => {
       </div>
 
       {/* Buscador y filtros */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div className="relative w-full md:w-1/2">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+        <div className="relative w-full lg:w-1/2">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3">
             <FiSearch className="text-gray-500" />
           </div>
           <input
             type="text"
-            placeholder="Buscar en historial..."
+            placeholder="Buscar por título en historial..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="input-field pl-10 w-full"
           />
         </div>
         
-        <div className="flex space-x-2 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full lg:w-auto">
+          {/* Selector de filtro */}
           <select
-            className="input-field flex-grow md:flex-grow-0"
+            className="input-field w-full sm:w-auto min-w-[140px]"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           >
             <option value="all">Todos los casos</option>
             <option value="recent">Últimos 30 días</option>
           </select>
+          
+          {/* Botón de ordenamiento */}
+          <button
+            onClick={toggleSortOrder}
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors font-medium min-w-[140px] border border-gray-600"
+            title={sortOrder === 'newest' ? 'Ordenar por más antiguos primero' : 'Ordenar por más recientes primero'}
+          >
+            {sortOrder === 'newest' ? (
+              <>
+                <FiArrowDown className="w-4 h-4" />
+                Más recientes
+              </>
+            ) : (
+              <>
+                <FiArrowUp className="w-4 h-4" />
+                Más antiguos
+              </>
+            )}
+          </button>
         </div>
       </div>
 
