@@ -4,7 +4,7 @@ import { isDynamicRoute } from "next/dist/shared/lib/router/utils";
 import { getRouteRegex } from "next/dist/shared/lib/router/utils/route-regex";
 import { getClientBuildManifest } from "next/dist/client/route-loader";
 
-async function pageExists(location) {
+async function pageExists(location : string) {
     const { sortedPages } = await getClientBuildManifest();
 
     const pathname = location === "/" ? location : location.replace(/\/$/, "");
