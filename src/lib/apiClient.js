@@ -6,6 +6,7 @@ import { ProceedingTypeResource } from '@/generated/api/ProceedingTypeResource';
 import { SubjectMatterResource } from '@/generated/api/SubjectMatterResource';
 import { RegulationResource } from '@/generated/api/RegulationResource';
 import { RepresentativeResource } from '@/generated/api/RepresentativeResource';
+import { ChatResource } from '@/generated/api/ChatResource';
 
 // Get API base URL from environment variables with a fallback
 const API_BASE_URL = process.env.NEXT_PUBLIC_ABOGABOT_API_URL || 'http://localhost:8080';
@@ -106,3 +107,12 @@ export const generateLawsuitDocument = async (id) => {
     throw error;
   }
 };
+
+export const chatResource = new ChatResource({
+  baseUrl: API_BASE_URL,
+  baseApiParams: {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  },
+});
