@@ -10,7 +10,7 @@ export const useRegulations = () => {
   const { user, getAccessTokenSilently } = useAuth0();
   // Mutación para consultar regulaciones
   const lookupRegulationsMutation = useMutation({
-    mutationFn: async (narrative) => {
+    mutationFn: async (narrative : string) => {
       try {
         const accessToken = await getAccessTokenSilently();
         const response = await regulationResource.lookupRegulations({ narrative }, {

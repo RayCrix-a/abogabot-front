@@ -10,9 +10,8 @@ async function main() {
         output: path.resolve(process.cwd(), "src/generated/api"),
         cleanOutput: true,
         moduleNameFirstTag: true,
-        modular: true,
-        toJS: true
-    });
+        modular: true
+    } as any);
 }
 
 main().catch(console.error);

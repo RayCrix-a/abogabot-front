@@ -1,11 +1,12 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Message } from './ChatBox';
 
-const ChatMessage = ({ message }) => {
+const ChatMessage = ({ message } : {message: Message}) => {
   const isBot = message.sender === 'bot';
   
   // Formatear la fecha del mensaje
-  const formatMessageTime = (timestamp) => {
+  const formatMessageTime = (timestamp : string) => {
     if (!timestamp) return '';
     
     const date = new Date(timestamp);

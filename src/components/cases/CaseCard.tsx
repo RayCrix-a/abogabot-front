@@ -2,10 +2,11 @@ import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { FiFileText, FiClock, FiUser } from 'react-icons/fi';
+import { LawsuitDetailResponse, LawsuitSummaryResponse } from '@/generated/api/data-contracts';
 
-const CaseCard = ({ caseData }) => {
+const CaseCard = ({ caseData } : { caseData : LawsuitSummaryResponse}) => {
   // Función para formatear la fecha
-  const formatDate = (dateString) => {
+  const formatDate = (dateString : string) => {
     try {
       if (!dateString) return 'Fecha no disponible';
       const date = parseISO(dateString);
@@ -19,7 +20,7 @@ const CaseCard = ({ caseData }) => {
   // Función para determinar el estado - CORREGIDA para usar el estado real
   const getStatus = () => {
     // Si no hay status, usar valor por defecto
-    if (!caseData?.status) {
+    if (!caseData.status) {
       return 'En curso';
     }
 
@@ -34,7 +35,7 @@ const CaseCard = ({ caseData }) => {
   };
 
   // Función para determinar el color de estado
-  const getStatusColor = (status) => {
+  const getStatusColor = (status : string) => {
     switch (status) {
       case 'Finalizado':
         return 'bg-green-600 text-white';
@@ -58,23 +59,7 @@ const CaseCard = ({ caseData }) => {
     if (!proceedingType) {
       return 'Tipo de procedimiento no especificado';
     }
-    
-    // Si es un objeto con description
-    if (typeof proceedingType === 'object' && proceedingType.description) {
-      return proceedingType.description;
-    }
-    
-    // Si es un objeto con name
-    if (typeof proceedingType === 'object' && proceedingType.name) {
-      return proceedingType.name;
-    }
-    
-    // Si es un string
-    if (typeof proceedingType === 'string') {
-      return proceedingType;
-    }
-    
-    return 'Tipo de procedimiento no especificado';
+    return proceedingType;
   };
   
   const createdAt = caseData?.createdAt;
@@ -103,7 +88,7 @@ const CaseCard = ({ caseData }) => {
     }
     
     // Si no tenemos datos de la API, usar el valor existente o un valor por defecto
-    return caseData?.parties || 'Partes no especificadas';
+    return 'Partes no especificadas';
   };
 
   return (

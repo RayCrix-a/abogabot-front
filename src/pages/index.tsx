@@ -16,8 +16,8 @@ const Home = () => {
   const recentCases = [...(activeCases || [])]
     .sort((a, b) => {
       // Ordenar por fecha de creación (más recientes primero)
-      const dateA = new Date(a.createdAt);
-      const dateB = new Date(b.createdAt);
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
       return dateB - dateA;
     })
     .slice(0, 3);

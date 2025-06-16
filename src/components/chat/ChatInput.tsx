@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { FiSend } from 'react-icons/fi';
 
-const ChatInput = ({ onSendMessage, disabled }) => {
+const ChatInput = ({ onSendMessage, disabled } : {onSendMessage: any, disabled: boolean}) => {
   const [message, setMessage] = useState('');
 
   // Manejar el envío del mensaje
-  const handleSubmit = (e) => {
+  const handleSubmit = (e : any) => {
     e.preventDefault();
     if (message.trim() && !disabled) {
       onSendMessage(message);
@@ -14,7 +14,7 @@ const ChatInput = ({ onSendMessage, disabled }) => {
   };
 
   // Manejar el envío con Enter
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e : any) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);

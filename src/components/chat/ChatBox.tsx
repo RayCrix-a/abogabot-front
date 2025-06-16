@@ -2,8 +2,15 @@ import { useState, useRef, useEffect } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 
-const ChatBox = ({ caseId }) => {
-  const [messages, setMessages] = useState([]);
+
+export interface Message { 
+  id: number,
+  content: string,
+  sender: string,
+  timestamp: string
+}
+const ChatBox = ({ caseId } : {caseId: number}) => {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
@@ -38,7 +45,7 @@ const ChatBox = ({ caseId }) => {
   };
 
   // Función para enviar un nuevo mensaje
-  const sendMessage = (content) => {
+  const sendMessage = (content : string) => {
     if (!content.trim()) return;
 
     // Añadir mensaje del usuario
@@ -68,7 +75,7 @@ const ChatBox = ({ caseId }) => {
 
   // Función para desplazarse al último mensaje
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    (messagesEndRef.current as any).scrollIntoView({ behavior: 'smooth' });
   };
 
   return (

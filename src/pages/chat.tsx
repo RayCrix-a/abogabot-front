@@ -1,9 +1,9 @@
 import MainLayout from '@/components/layout/MainLayout';
-import ChatBox from '@/components/chat/ChatBox';
+import ChatBox, { Message } from '@/components/chat/ChatBox';
 import {useChats} from '@/hooks/useChats';
 
 const ChatPage = () => {
-  const { chats, isLoading: isLoadingChats } = useChats();
+  const { chats, isLoadingChats } = useChats();
 
   return (
     <MainLayout title="Chat" description="Asistente legal con IA">
@@ -17,11 +17,7 @@ const ChatPage = () => {
       </div>
       <div className="flex gap-4">
         <div className="flex-1 bg-dark-lighter rounded-lg h-[calc(100vh-220px)]">        
-          <ChatBox 
-            messages={chats}
-            loading={isLoadingChats}
-            onSendMessage={() => {}}
-          />
+         <p>{chats?.map(c => c.title)}</p>
         </div>
       </div>
     </MainLayout>

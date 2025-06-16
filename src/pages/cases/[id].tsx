@@ -10,11 +10,12 @@ import { useLawsuits } from '@/hooks/useLawsuits';
 import { FiArrowLeft, FiFile, FiMessageCircle } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { useAuth0, withAuthenticationRequired } from '@auth0/auth0-react'
+import { LawsuitDetailResponse, LawsuitRequest, LawsuitStatus } from '@/generated/api/data-contracts';
 
 export const CaseDetail = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { id } = router.query;
+  const { id } = router.query as { id: string};
   const [activeTab, setActiveTab] = useState('document'); // 'document' o 'chat'
   const [markdownContent, setMarkdownContent] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -27,14 +28,13 @@ export const CaseDetail = () => {
     useLawsuit, 
     deleteLawsuit, 
     updateLawsuit,
-    updateLawsuitStatus,
     useLawsuitLastRevisions,
     generate,
     loading: isLoadingGeneration
   } = useLawsuits();
   
-  const { data: lawsuit, isLoading: isLoadingLawsuit, error: lawsuitError } = useLawsuit(id);
-  const { data: revision, isLoading: isLoadingRevision, error: revisiontError } = useLawsuitLastRevisions(id);
+  const { data: lawsuit, isLoading: isLoadingLawsuit, error: lawsuitError } = useLawsuit(Number(id));
+  const { data: revision, isLoading: isLoadingRevision, error: revisiontError } = useLawsuitLastRevisions(Number(id));
 
   useEffect(() => {
     // Si el documento tiene contenido, establecerlo    
@@ -56,7 +56,7 @@ export const CaseDetail = () => {
       
       if (isNaN(numericId)) {
         console.log('Usando ID como string:', id);
-        await deleteLawsuit(id);
+        await deleteLawsuit(Number(id));
       } else {
         console.log('Usando ID como número:', numericId);
         await deleteLawsuit(numericId);
@@ -70,13 +70,13 @@ export const CaseDetail = () => {
       return true;
     } catch (error) {
       console.error('Error detallado al eliminar demanda:', error);
-      toast.error(`Error al eliminar el caso: ${error.message || 'Error desconocido'}`);
+      toast.error(`Error al eliminar el caso: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
       return false;
     }
   };
 
   // CORRECCIÓN PRINCIPAL: Manejar cambio de estado del caso
-  const handleStatusChange = async (newStatus) => {
+  const handleStatusChange = async (newStatus : LawsuitStatus) => {
     try {
       if (!id || !lawsuit) {
         console.error('No se puede cambiar estado: falta ID o datos del caso');
@@ -84,16 +84,16 @@ export const CaseDetail = () => {
       }
       
       // CORRECCIÓN: Construir datos correctamente basándose en la estructura actual del caso
-      const updateData = {
+      const updateData : LawsuitRequest = {
         title: lawsuit.title || '',
         // CORRECCIÓN: Manejar proceedingType correctamente
-        proceedingType: lawsuit.proceedingType?.name || lawsuit.proceedingType || '',
+        proceedingType: lawsuit.proceedingType || '',
         subjectMatter: lawsuit.subjectMatter || '',
         status: newStatus,
         // CORRECCIÓN: Asegurar que los arrays están definidos
         plaintiffs: (lawsuit.plaintiffs || []).map(p => p.idNumber),
         defendants: (lawsuit.defendants || []).map(d => d.idNumber),
-        attorneyOfRecord: lawsuit.attorneyOfRecord?.idNumber || undefined,
+        attorneyOfRecord: lawsuit.attorneyOfRecord?.idNumber,
         representative: lawsuit.representative?.idNumber || undefined,
         claims: lawsuit.claims || [],
         institution: lawsuit.institution || '',
@@ -104,17 +104,17 @@ export const CaseDetail = () => {
       await updateLawsuit({ id: parseInt(id, 10), data: updateData });
     } catch (error) {
       console.error('Error al cambiar el estado:', error);
-      toast.error(`Error al cambiar el estado: ${error.message || 'Error desconocido'}`);
+      toast.error(`Error al cambiar el estado: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   };
 
   // Manejar edición del caso
-  const handleEditCase = async (updatedData) => {
+  const handleEditCase = async (updatedData : LawsuitRequest) => {
     try {
       await updateLawsuit({ id: parseInt(id, 10), data: updatedData });
     } catch (error) {
       console.error('Error al actualizar el caso:', error);
-      toast.error(`Error al actualizar el caso: ${error.message || 'Error desconocido'}`);
+      toast.error(`Error al actualizar el caso: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   };
 
@@ -126,13 +126,13 @@ export const CaseDetail = () => {
     setIsGenerating(true);
     
     try {
-      await generate(id, (chunk) => {
+      await generate(Number(id), (chunk) => {
         setMarkdownContent(prev => prev + chunk);
       });
       toast.success('Documento generado exitosamente');
     } catch (error) {
       console.error('Error al generar documento:', error);
-      toast.error(`Error al generar el documento: ${error.message || 'Error desconocido'}`);
+      toast.error(`Error al generar el documento: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     } finally {
       setIsGenerating(false);
     }
@@ -166,7 +166,7 @@ export const CaseDetail = () => {
       <MainLayout title="Error" description="Error al cargar el caso">
         <div className="bg-red-900 text-red-200 p-4 rounded-lg">
           <h2 className="text-xl font-bold mb-2">Error al cargar el caso</h2>
-          <p>{lawsuitError.message || 'Error desconocido'}</p>
+          <p>{lawsuitError instanceof Error? lawsuitError.message : 'Error desconocido'}</p>
           <Link href="/">
             <button className="mt-4 btn-primary">Volver al Dashboard</button>
           </Link>
@@ -261,7 +261,7 @@ export const CaseDetail = () => {
                 onGenerateDocument={handleGenerateDocument}
               />
             ) : (
-              <ChatBox caseId={id} />
+              <ChatBox caseId={Number(id)} />
             )}
           </div>
         </>

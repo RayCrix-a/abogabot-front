@@ -4,8 +4,19 @@ import { es } from 'date-fns/locale';
 import { FiEdit, FiTrash2, FiMessageSquare } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import EditCaseForm from './EditCaseForm';
+import { LawsuitDetailResponse, LawsuitStatus } from '@/generated/api/data-contracts';
 
-const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEditing, onCancelEditing }) => {
+export interface CaseDetailsProps {
+  caseData: LawsuitDetailResponse,
+  onDelete: any,
+  onStatusChange: any,
+  onEdit: any,
+  isEditing: boolean,
+  onStartEditing: any,
+  onCancelEditing: any
+}
+
+const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEditing, onCancelEditing } : CaseDetailsProps) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
@@ -30,7 +41,7 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
   console.log('👁️ Renderizando vista normal (NO edición)'); // Debug log
   
   // Función para formatear la fecha
-  const formatDate = (dateString) => {
+  const formatDate = (dateString : string) => {
     try {
       const date = parseISO(dateString);
       return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
@@ -57,7 +68,7 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
         }
       } catch (error) {
         console.error('Error capturado en CaseDetails durante eliminación:', error);
-        toast.error(`Error al eliminar el caso: ${error.message || 'Error desconocido'}`);
+        toast.error(`Error al eliminar el caso: ${error && error instanceof Error ? error.message : "Error desconocido" }`);
         setIsConfirmingDelete(false);
       } finally {
         setIsDeleting(false);
@@ -79,7 +90,7 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
   };
 
   // Obtener el estado para mostrar
-  const getDisplayStatus = (status) => {
+  const getDisplayStatus = (status : LawsuitStatus) => {
     const statusMap = {
       'IN_PROGRESS': 'En curso',
       'PENDING': 'Pendiente',
@@ -90,15 +101,15 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
   };
 
   // Función para cambiar el estado
-  const handleStatusChange = async (event) => {
-    const statusMap = {
-      'En curso': 'IN_PROGRESS',
-      'Pendiente': 'PENDING',
-      'Finalizado': 'FINALIZED',
-      'Borrador': 'DRAFT'
+  const handleStatusChange = async (event : any) => {
+    const statusMap : Record<string, LawsuitStatus> = {
+      'En curso': LawsuitStatus.IN_PROGRESS,
+      'Pendiente': LawsuitStatus.PENDING,
+      'Finalizado': LawsuitStatus.FINALIZED,
+      'Borrador': LawsuitStatus.DRAFT
     };
     
-    const apiStatus = statusMap[event.target.value];
+    const apiStatus = statusMap[(event.target.value) as string];
     if (!apiStatus) return;
 
     try {
@@ -127,10 +138,10 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
   };
 
   // Función para obtener el color del estado
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     if (typeof status !== 'string') return 'bg-gray-700 text-gray-300';
     
-    const statusColor = {
+    const statusColor : Record<string, string> = {
       'Finalizado': 'bg-green-600 text-white',
       'FINALIZED': 'bg-green-600 text-white',
       'Pendiente': 'bg-amber-500 text-white',
@@ -222,7 +233,7 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
             <tbody>
               <tr className="border-b border-gray-700">
                 <td className="py-2 text-gray-400">Tipo de procedimiento</td>
-                <td className="py-2 text-white">{caseData.proceedingType?.description || caseData.proceedingType || 'No especificado'}</td>
+                <td className="py-2 text-white">{caseData.proceedingType || 'No especificado'}</td>
               </tr>
               <tr className="border-b border-gray-700">
                 <td className="py-2 text-gray-400">Materia legal</td>

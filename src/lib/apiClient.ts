@@ -86,7 +86,7 @@ export const representativeResource = new RepresentativeResource({
 });
 
 // Function to generate documents with streaming support
-export const generateLawsuitDocument = async (id) => {
+export const generateLawsuitDocument = async (id : number) => {
   try {
     const response = await fetch(`${API_BASE_URL}/lawsuit/generate?id=${id}`, {
       method: 'POST',
