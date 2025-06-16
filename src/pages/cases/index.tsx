@@ -29,8 +29,8 @@ const CasesIndex = () => {
 
   // Ordenar casos según el criterio seleccionado
   filteredCases = [...filteredCases].sort((a, b) => {
-    const dateA = new Date(a.createdAt);
-    const dateB = new Date(b.createdAt);
+    const dateA = new Date(a.createdAt).getTime();
+    const dateB = new Date(b.createdAt).getTime();
     
     if (sortOrder === 'newest') {
       return dateB - dateA; // Más recientes primero

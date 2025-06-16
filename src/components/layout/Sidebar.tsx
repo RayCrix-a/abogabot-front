@@ -1,10 +1,10 @@
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { FiHome, FiFolder, FiClock, FiSettings } from 'react-icons/fi';
+import { FiHome, FiFolder, FiClock, FiSettings, FiMessageSquare } from 'react-icons/fi';
 import { useLawsuits } from '@/hooks/useLawsuits'; // Cambio aquí
 
-const Sidebar = ({ isOpen, onToggle }) => {
+const Sidebar = ({ isOpen, onToggle } : {isOpen: any, onToggle: any}) => {
   const router = useRouter();
   const { lawsuits } = useLawsuits(); // Cambio aquí
 
@@ -17,7 +17,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
   const recentCases = lawsuits?.filter(c => c.status !== 'FINALIZED').slice(0, 5) || [];
 
   // Verificar si una ruta está activa
-  const isActive = (path) => {
+  const isActive = (path : string) => {
     return router.pathname === path || router.pathname.startsWith(`${path}/`);
   };
 
@@ -32,6 +32,11 @@ const Sidebar = ({ isOpen, onToggle }) => {
       name: 'Casos',
       path: '/cases',
       icon: <FiFolder className="w-5 h-5" />
+    },
+    {
+      name: 'Chat Legal',
+      path: '/chat',
+      icon: <FiMessageSquare className="w-5 h-5" />
     },
     {
       name: 'Historial',
@@ -107,7 +112,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
 };
 
 // Componente para renderizar un caso reciente
-const RecentCaseItem = ({ title, date, path }) => {
+const RecentCaseItem = ({ title, date, path } : {title: string, date: string, path: string}) => {
   return (
     <li>
       <Link

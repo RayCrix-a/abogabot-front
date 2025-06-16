@@ -10,6 +10,8 @@ import { useLawsuits } from '@/hooks/useLawsuits';
 import { useParticipants } from '@/hooks/useParticipants';
 import { useProceedingTypes } from '@/hooks/useProceedingTypes';
 import { useSubjectMatters } from '@/hooks/useSubjectMatters';
+import { LawsuitDetailResponse, LawsuitRequest, ParticipantSummaryResponse } from '@/generated/api/data-contracts';
+import { Persona, PersonaSummary } from './CaseForm';
 
 // Esquema de validación actualizado para múltiples participantes
 const editCaseSchema = z.object({
@@ -28,10 +30,14 @@ const editCaseSchema = z.object({
   claims: z.array(z.string()).optional()
 });
 
-const EditCaseForm = ({ caseData, onCancel }) => {
+export interface EditCaseFormProps { 
+  caseData: LawsuitDetailResponse,
+  onCancel: any
+}
+const EditCaseForm = ({ caseData, onCancel } : EditCaseFormProps) => {
   const [saving, setSaving] = useState(false);
   const [claimInput, setClaimInput] = useState('');
-  const [claimsList, setClaimsList] = useState([]);
+  const [claimsList, setClaimsList] = useState<string[]>([]);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const queryClient = useQueryClient();
   
@@ -41,16 +47,16 @@ const EditCaseForm = ({ caseData, onCancel }) => {
   const [editandoIndice, setEditandoIndice] = useState(-1);
   
   // Estados para selecciones múltiples
-  const [personasSeleccionadas, setPersonasSeleccionadas] = useState({
-    demandantes: [],
-    demandados: [],
-    abogados: [],
-    representantes: []
+  const [personasSeleccionadas, setPersonasSeleccionadas] = useState<Record<string, PersonaSummary[]>>({
+    demandantes: ([] as PersonaSummary[]),
+    demandados: ([] as PersonaSummary[]),
+    abogados: ([] as PersonaSummary[]),
+    representantes: ([] as PersonaSummary[])
   });
   
   // Estado para el formulario del overlay
   const [formData, setFormData] = useState({
-    id: null,
+    id: (null as number|null),
     rut: '',
     nombre: '',
     direccion: ''
@@ -78,15 +84,15 @@ const EditCaseForm = ({ caseData, onCancel }) => {
   const getInitialValues = () => {
     return {
       title: caseData.title || '',
-      proceedingType: caseData.proceedingType?.name || caseData.proceedingType || '',
+      proceedingType:  caseData.proceedingType || '',
       legalMatter: caseData.subjectMatter || '',
-      plaintiffIds: [],
-      defendantIds: [],
-      attorneyIds: [],
-      representativeIds: [],
+      plaintiffIds: ([] as number[]),
+      defendantIds: ([] as number[]),
+      attorneyIds: ([] as number[]),
+      representativeIds: ([] as number[]),
       institution: caseData.institution || 'S.J.L. EN LO CIVIL',
       description: caseData.narrative || '',
-      claims: []
+      claims: ([] as string[]),
     };
   };
   
@@ -140,7 +146,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
   }, [caseData, plaintiffs, defendants, lawyers, representatives, setValue]);
 
   // Funciones de validación
-  const validarRUT = (rut) => {
+  const validarRUT = (rut : string) => {
     const rutLimpio = rut.replace(/[^0-9kK]/g, '');
     
     if (rutLimpio.length < 8 || rutLimpio.length > 9) {
@@ -161,7 +167,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     return '';
   };
 
-  const formatearRUT = (valor) => {
+  const formatearRUT = (valor : string) => {
     const limpio = valor.replace(/[^0-9kK]/g, '');
     
     if (limpio.length <= 1) return limpio;
@@ -174,7 +180,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     return `${cuerpoFormateado}-${dv}`;
   };
 
-  const validarNombre = (nombre) => {
+  const validarNombre = (nombre : string) => {
     if (!nombre.trim()) {
       return 'El nombre es obligatorio';
     }
@@ -190,7 +196,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     return '';
   };
 
-  const validarDireccion = (direccion) => {
+  const validarDireccion = (direccion : string) => {
     if (!direccion.trim()) {
       return 'La dirección es obligatoria';
     }
@@ -202,7 +208,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     return '';
   };
 
-  const manejarCambioRUT = (valor) => {
+  const manejarCambioRUT = (valor : string) => {
     const soloValidos = valor.replace(/[^0-9kK]/g, '');
     
     if (soloValidos.length > 9) return;
@@ -214,7 +220,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     setErroresValidacion(prev => ({ ...prev, rut: error }));
   };
 
-  const manejarCambioNombre = (valor) => {
+  const manejarCambioNombre = (valor : string) => {
     const soloLetras = valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '');
     
     if (soloLetras.length > 100) return;
@@ -225,7 +231,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     setErroresValidacion(prev => ({ ...prev, nombre: error }));
   };
 
-  const manejarCambioDireccion = (valor) => {
+  const manejarCambioDireccion = (valor : string) => {
     if (valor.length > 255) return;
     
     const error = validarDireccion(valor);
@@ -243,7 +249,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
   };
 
   // Funciones para manejar selecciones múltiples
-  const obtenerDatosPorTipo = (tipo) => {
+  const obtenerDatosPorTipo = (tipo : string) => {
     switch(tipo) {
       case 'demandantes': return plaintiffs || [];
       case 'demandados': return defendants || [];
@@ -253,7 +259,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     }
   };
 
-  const agregarPersonaSeleccionada = (tipo, rutPersona) => {
+  const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
     const yaSeleccionada = personasSeleccionadas[tipo].some(p => p.rut === rutPersona);
     
     if (rutPersona && !yaSeleccionada) {
@@ -290,7 +296,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     }
   };
 
-  const eliminarPersonaSeleccionada = (tipo, rutPersona) => {
+  const eliminarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
     setPersonasSeleccionadas(prev => ({
       ...prev,
       [tipo]: prev[tipo].filter(persona => persona.rut !== rutPersona)
@@ -321,18 +327,18 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     }
   };
 
-  const obtenerPersonaPorRut = (tipo, rutOPersona) => {
+  const obtenerPersonaPorRut = (tipo : string, rutOPersona : PersonaSummary) => {
     const datos = obtenerDatosPorTipo(tipo);
     const rut = typeof rutOPersona === 'object' ? rutOPersona.rut : rutOPersona;
     return datos.find(persona => persona.idNumber === rut);
   };
 
   // Funciones del overlay
-  const abrirOverlay = (tipo) => {
+  const abrirOverlay = (tipo : string) => {
     setTipoOverlay(tipo);
     setOverlayAbierto(true);
     setEditandoIndice(-1);
-    setFormData({ rut: '', nombre: '', direccion: '' });
+    setFormData({ id: null, rut: '', nombre: '', direccion: '' });
   };
 
   const cerrarOverlay = () => {
@@ -344,7 +350,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
   };
 
   const obtenerTitulo = () => {
-    const titulos = {
+    const titulos : Record<string, string> = {
       'demandantes': 'Gestionar Demandantes',
       'demandados': 'Gestionar Demandados',
       'abogados': 'Gestionar Abogados Patrocinantes',
@@ -399,12 +405,12 @@ const EditCaseForm = ({ caseData, onCancel }) => {
         setFormData({ id: null, rut: '', nombre: '', direccion: '' });
         setErroresValidacion({ rut: '', nombre: '', direccion: '' });
       } catch (error) {
-        toast.error(`Error al crear ${tipoOverlay}: ${error.message}`);
+        toast.error(`Error al crear ${tipoOverlay}: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
       }
     }
   };
 
-  const editarPersona = (indice) => {
+  const editarPersona = (indice : number) => {
     const datosActuales = obtenerDatosPorTipo(tipoOverlay);
     const persona = datosActuales[indice];
     if (persona) {
@@ -412,7 +418,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
         id: persona.id,
         rut: persona.idNumber,
         nombre: persona.fullName,
-        direccion: persona.address || ''
+        direccion: ''
       });
       setEditandoIndice(indice);
       setErroresValidacion({ rut: '', nombre: '', direccion: '' });
@@ -439,7 +445,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
           address: formData.direccion
         };
         
-        const id = formData.id;
+        const id = formData.id!;
         
         switch(tipoOverlay) {
           case 'demandantes':
@@ -461,12 +467,12 @@ const EditCaseForm = ({ caseData, onCancel }) => {
         setErroresValidacion({ rut: '', nombre: '', direccion: '' });
       } catch (error) {
         console.error(`Error al actualizar ${tipoOverlay}:`, error);
-        toast.error(`Error al actualizar ${tipoOverlay}: ${error.message || 'Error desconocido'}`);
+        toast.error(`Error al actualizar ${tipoOverlay}: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
       }
     }
   };
 
-  const eliminarPersona = async (indice) => {
+  const eliminarPersona = async (indice : number) => {
     try {
       const datosActuales = obtenerDatosPorTipo(tipoOverlay);
       const persona = datosActuales[indice];
@@ -515,12 +521,12 @@ const EditCaseForm = ({ caseData, onCancel }) => {
       }
     } catch (error) {
       console.error(`Error al eliminar ${tipoOverlay}:`, error);
-      toast.error(`Error al eliminar ${tipoOverlay}: ${error.message || 'Error desconocido'}`);
+      toast.error(`Error al eliminar ${tipoOverlay}: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   };
 
   // Funciones para peticiones
-  const handleAddClaim = (claim) => {
+  const handleAddClaim = (claim : string) => {
     if (!claim || typeof claim !== 'string') {
       return;
     }
@@ -538,7 +544,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     }
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e : any) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       if (claimInput && claimInput.trim()) {
@@ -547,12 +553,12 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     }
   };
 
-  const handleDeleteClaim = (claimToDelete) => {
+  const handleDeleteClaim = (claimToDelete : string) => {
     setClaimsList(prev => prev.filter(claim => claim !== claimToDelete));
   };
 
   // Función principal para enviar el formulario actualizado
-  const onSubmit = async (data) => {
+  const onSubmit = async (data : LawsuitRequest) => {
     if (!caseData?.id) {
       toast.error('Error: No se puede actualizar el caso sin ID');
       return;
@@ -580,18 +586,18 @@ const EditCaseForm = ({ caseData, onCancel }) => {
       }
       
       // Preparar datos para la API
-      const lawsuitRequest = {
+      const lawsuitRequest : LawsuitRequest = {
         title: data.title,
         proceedingType: data.proceedingType,
-        subjectMatter: data.legalMatter,
+        subjectMatter: data.subjectMatter,
         status: caseData.status, // Mantener el status actual
         plaintiffs: plaintiffRuts,
         defendants: defendantRuts,
-        attorneyOfRecord: attorneyRuts.length > 0 ? attorneyRuts[0] : undefined,
+        attorneyOfRecord: attorneyRuts[0],
         representative: representativeRuts.length > 0 ? representativeRuts[0] : undefined,
         claims: claimsList,
         institution: data.institution,
-        narrative: data.description
+        narrative: data.narrative
       };
       
       // Llamada a la API
@@ -605,7 +611,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
       onCancel(); // Cerrar formulario de edición
     } catch (error) {
       console.error('Error al actualizar caso:', error);
-      toast.error(`Error al actualizar el caso: ${error.message || 'Error desconocido'}`);
+      toast.error(`Error al actualizar el caso: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     } finally {
       setSaving(false);
     }
@@ -631,9 +637,9 @@ const EditCaseForm = ({ caseData, onCancel }) => {
   ];
 
   // Componente de búsqueda con autocompletado
-  const AutocompleteSearch = ({ tipo, placeholder, onSelect }) => {
+  const AutocompleteSearch = ({ tipo, placeholder, onSelect } : {tipo: string, placeholder: string, onSelect: any}) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [results, setResults] = useState([]);
+    const [results, setResults] = useState<ParticipantSummaryResponse[]>([]);
     const [showResults, setShowResults] = useState(false);
     const [showingRecommendations, setShowingRecommendations] = useState(false);
     const searchRef = useRef(null);
@@ -676,8 +682,8 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     }, [searchTerm, personas, seleccionadas, tipo, showResults]);
 
     useEffect(() => {
-      const handleClickOutside = (event) => {
-        if (searchRef.current && !searchRef.current.contains(event.target)) {
+      const handleClickOutside = (event : any) => {
+        if (searchRef.current && !(searchRef.current as any).contains(event.target)) {
           setShowResults(false);
         }
       };
@@ -688,12 +694,12 @@ const EditCaseForm = ({ caseData, onCancel }) => {
       };
     }, []);
 
-    const handleSearchChange = (e) => {
+    const handleSearchChange = (e : any) => {
       setSearchTerm(e.target.value);
       setShowResults(true);
     };
 
-    const handleSelectResult = (persona) => {
+    const handleSelectResult = (persona : ParticipantSummaryResponse) => {
       onSelect(persona.idNumber);
       setSearchTerm('');
       setShowResults(false);
@@ -748,9 +754,9 @@ const EditCaseForm = ({ caseData, onCancel }) => {
   };
 
   // Componente de búsqueda con autocompletado para peticiones predefinidas
-  const PredefinedClaimsAutocomplete = ({ onSelect }) => {
+  const PredefinedClaimsAutocomplete = ({ onSelect } : { onSelect: any}) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [results, setResults] = useState([]);
+    const [results, setResults] = useState<string[]>([]);
     const [showResults, setShowResults] = useState(false);
     const [showingAllOptions, setShowingAllOptions] = useState(false);
     const searchRef = useRef(null);
@@ -776,8 +782,8 @@ const EditCaseForm = ({ caseData, onCancel }) => {
     }, [searchTerm, showResults]);
 
     useEffect(() => {
-      const handleClickOutside = (event) => {
-        if (searchRef.current && !searchRef.current.contains(event.target)) {
+      const handleClickOutside = (event : any) => {
+        if (searchRef.current && !(searchRef.current as any).contains(event.target)) {
           setShowResults(false);
         }
       };
@@ -788,12 +794,12 @@ const EditCaseForm = ({ caseData, onCancel }) => {
       };
     }, []);
 
-    const handleSearchChange = (e) => {
+    const handleSearchChange = (e : any) => {
       setSearchTerm(e.target.value);
       setShowResults(true);
     };
 
-    const handleSelectResult = (claim) => {
+    const handleSelectResult = (claim : string) => {
       onSelect(claim);
       setSearchTerm('');
       setShowResults(false);
@@ -847,7 +853,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
   };
 
   // Componente para selector múltiple compacto
-  const SelectorMultipleCompacto = ({ tipo, titulo, esOpcional = false }) => {
+  const SelectorMultipleCompacto = ({ tipo, titulo, esOpcional = false } : {tipo: string, titulo: string, esOpcional?: boolean}) => {
     const personas = obtenerDatosPorTipo(tipo);
     const seleccionadas = personasSeleccionadas[tipo] || [];
 
@@ -874,7 +880,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
           <AutocompleteSearch 
             tipo={tipo} 
             placeholder={`Buscar por RUT o nombre...`}
-            onSelect={(rutPersona) => agregarPersonaSeleccionada(tipo, rutPersona)}
+            onSelect={(rutPersona : string) => agregarPersonaSeleccionada(tipo, rutPersona)}
           />
           
           {seleccionadas.length > 0 ? (
@@ -944,7 +950,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
           <div className="bg-[#0F1625] rounded-xl p-8">
           <div className="p-6 relative">
             <div className="max-w-4xl mx-auto">
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
                 {/* Título del caso */}
                 <div>
                   <label className="block mb-4 text-white font-medium">Título Caso</label>
@@ -1281,7 +1287,7 @@ const EditCaseForm = ({ caseData, onCancel }) => {
                     <div key={idx} className="bg-gray-700 p-3 rounded-md">
                       <div className="font-medium">{persona.fullName}</div>
                       <div className="text-sm text-gray-300">{persona.idNumber}</div>
-                      <div className="text-sm text-gray-400">{persona.address}</div>
+                      <div className="text-sm text-gray-400">Sin dirección</div>
                       <div className="flex gap-2 mt-2">
                         <button 
                           onClick={() => editarPersona(idx)}

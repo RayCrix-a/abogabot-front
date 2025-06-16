@@ -38,6 +38,7 @@
     "postcss": "^8.5.3",
     "swagger-typescript-api": "^13.1.1",
     "tailwindcss": "^3.4.17",
-    "tsx": "^4.19.3"
+    "tsx": "^4.19.3",
+    "typescript": "^5"
   }
 }

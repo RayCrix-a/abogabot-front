@@ -9,7 +9,18 @@ import { Plus, X as XIcon, Edit, Trash2, Save, User, PlusCircle } from 'lucide-r
 import { useLawsuits } from '@/hooks/useLawsuits'; // Cambio aquí
 import { useParticipants } from '@/hooks/useParticipants';
 import { useProceedingTypes } from '@/hooks/useProceedingTypes';
-import { title } from 'process';
+import { LawsuitDetailResponse, LawsuitRequest, ParticipantSummaryResponse } from '@/generated/api/data-contracts';
+
+
+export interface PersonaSummary {
+  id: number | null,
+  rut: string,
+}
+export interface Persona extends PersonaSummary {
+  nombre: string,
+  direccion: string
+}
+
 
 // Esquema de validación actualizado para múltiples participantes
 const caseSchema = z.object({
@@ -32,7 +43,7 @@ const CaseForm = () => {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [claimInput, setClaimInput] = useState('');
-  const [claimsList, setClaimsList] = useState([]);
+  const [claimsList, setClaimsList] = useState<string[]>([]);
   const [showCustomInput, setShowCustomInput] = useState(false);
   
   // Estados para overlay de gestión de participantes
@@ -42,7 +53,7 @@ const CaseForm = () => {
   
   // Estados para selecciones múltiples
   // Ahora almacenamos objetos {id, rut} en lugar de solo RUTs
-  const [personasSeleccionadas, setPersonasSeleccionadas] = useState({
+  const [personasSeleccionadas, setPersonasSeleccionadas] = useState<Record<string, PersonaSummary[]>>({
     demandantes: [],
     demandados: [],
     abogados: [],
@@ -50,7 +61,7 @@ const CaseForm = () => {
   });
   
   // Estado para el formulario del overlay
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Persona>({
     id: null,  // Agregamos el campo id para guardar el ID numérico
     rut: '',
     nombre: '',
@@ -79,19 +90,19 @@ const {
     defaultValues: {
       proceedingType: '',
       legalMatter: '',
-      plaintiffIds: [],
-      defendantIds: [],
-      attorneyIds: [],
-      representativeIds: [],
+      plaintiffIds: ([] as number[]),
+      defendantIds: ([] as number[]),
+      attorneyIds: ([] as number[]),
+      representativeIds: ([] as number[]),
       institution: 'S.J.L. EN LO CIVIL',
       description: '',
-      claims: []
+      claims: ([] as string[])
     }
   });
 
   // ... (mantener todas las funciones de validación y manejo sin cambios)
   // Funciones de validación
-  const validarRUT = (rut) => {
+  const validarRUT = (rut : string) => {
     const rutLimpio = rut.replace(/[^0-9kK]/g, '');
     
     if (rutLimpio.length < 8 || rutLimpio.length > 9) {
@@ -112,7 +123,7 @@ const {
     return '';
   };
 
-  const formatearRUT = (valor) => {
+  const formatearRUT = (valor : string) => {
     const limpio = valor.replace(/[^0-9kK]/g, '');
     
     if (limpio.length <= 1) return limpio;
@@ -125,7 +136,7 @@ const {
     return `${cuerpoFormateado}-${dv}`;
   };
 
-  const validarNombre = (nombre) => {
+  const validarNombre = (nombre : string) => {
     if (!nombre.trim()) {
       return 'El nombre es obligatorio';
     }
@@ -141,7 +152,7 @@ const {
     return '';
   };
 
-  const validarDireccion = (direccion) => {
+  const validarDireccion = (direccion : string) => {
     if (!direccion.trim()) {
       return 'La dirección es obligatoria';
     }
@@ -153,7 +164,7 @@ const {
     return '';
   };
 
-  const manejarCambioRUT = (valor) => {
+  const manejarCambioRUT = (valor : string) => {
     const soloValidos = valor.replace(/[^0-9kK]/g, '');
     
     if (soloValidos.length > 9) return;
@@ -165,7 +176,7 @@ const {
     setErroresValidacion(prev => ({ ...prev, rut: error }));
   };
 
-  const manejarCambioNombre = (valor) => {
+  const manejarCambioNombre = (valor : string) => {
     const soloLetras = valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '');
     
     if (soloLetras.length > 100) return;
@@ -176,7 +187,7 @@ const {
     setErroresValidacion(prev => ({ ...prev, nombre: error }));
   };
 
-  const manejarCambioDireccion = (valor) => {
+  const manejarCambioDireccion = (valor : string) => {
     if (valor.length > 255) return;
     
     const error = validarDireccion(valor);
@@ -194,7 +205,7 @@ const {
   };
 
   // Funciones para manejar selecciones múltiples
-  const obtenerDatosPorTipo = (tipo) => {
+  const obtenerDatosPorTipo = (tipo : string) => {
     switch(tipo) {
       case 'demandantes': return plaintiffs || [];
       case 'demandados': return defendants || [];
@@ -204,7 +215,7 @@ const {
     }
   };
 
-const agregarPersonaSeleccionada = (tipo, rutPersona) => {
+const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
   const yaSeleccionada = personasSeleccionadas[tipo].some(p => p.rut === rutPersona);
   
   if (rutPersona && !yaSeleccionada) {
@@ -216,7 +227,7 @@ const agregarPersonaSeleccionada = (tipo, rutPersona) => {
       return;
     }
     
-    const nuevaPersona = { id: personaCompleta.id, rut: rutPersona };
+    const nuevaPersona : Persona = { id: personaCompleta.id, rut: rutPersona, nombre: "", direccion: ""};
     
     setPersonasSeleccionadas(prev => ({
       ...prev,
@@ -241,7 +252,7 @@ const agregarPersonaSeleccionada = (tipo, rutPersona) => {
     }
   };
 
-  const eliminarPersonaSeleccionada = (tipo, rutPersona) => {
+  const eliminarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
     setPersonasSeleccionadas(prev => ({
       ...prev,
       [tipo]: prev[tipo].filter(persona => persona.rut !== rutPersona)
@@ -272,7 +283,7 @@ const agregarPersonaSeleccionada = (tipo, rutPersona) => {
     }
   };
 
-  const obtenerPersonaPorRut = (tipo, rutOPersona) => {
+  const obtenerPersonaPorRut = (tipo : string, rutOPersona : PersonaSummary) => {
     const datos = obtenerDatosPorTipo(tipo);
     // Si recibimos un objeto {id, rut}, extraemos el rut
     const rut = typeof rutOPersona === 'object' ? rutOPersona.rut : rutOPersona;
@@ -280,11 +291,11 @@ const agregarPersonaSeleccionada = (tipo, rutPersona) => {
   };
 
   // Funciones del overlay
-  const abrirOverlay = (tipo) => {
+  const abrirOverlay = (tipo : string) => {
     setTipoOverlay(tipo);
     setOverlayAbierto(true);
     setEditandoIndice(-1);
-    setFormData({ rut: '', nombre: '', direccion: '' });
+    setFormData({ id: null, rut: '', nombre: '', direccion: '' });
   };
 
   const cerrarOverlay = () => {
@@ -296,7 +307,7 @@ const agregarPersonaSeleccionada = (tipo, rutPersona) => {
   };
 
   const obtenerTitulo = () => {
-    const titulos = {
+    const titulos : Record<string, string> = {
       'demandantes': 'Gestionar Demandantes',
       'demandados': 'Gestionar Demandados',
       'abogados': 'Gestionar Abogados Patrocinantes',
@@ -350,12 +361,12 @@ const agregarPersonaSeleccionada = (tipo, rutPersona) => {
         setFormData({ id: null, rut: '', nombre: '', direccion: '' });
         setErroresValidacion({ rut: '', nombre: '', direccion: '' });
       } catch (error) {
-        toast.error(`Error al crear ${tipoOverlay}: ${error.message}`);
+        toast.error(`Error al crear ${tipoOverlay}: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
       }
     }
   };
 
-  const editarPersona = (indice) => {
+  const editarPersona = (indice : number) => {
     const datosActuales = obtenerDatosPorTipo(tipoOverlay);
     const persona = datosActuales[indice];
     if (persona) {
@@ -363,7 +374,7 @@ const agregarPersonaSeleccionada = (tipo, rutPersona) => {
         id: persona.id,   // Guardamos el ID numérico para operaciones de API
         rut: persona.idNumber,
         nombre: persona.fullName,
-        direccion: persona.address || ''
+        direccion: ''
       });
       setEditandoIndice(indice);
       setErroresValidacion({ rut: '', nombre: '', direccion: '' });
@@ -390,7 +401,7 @@ const agregarPersonaSeleccionada = (tipo, rutPersona) => {
           address: formData.direccion
         };
         
-        const id = formData.id; // Usamos el ID numérico para la API
+        const id = formData.id!; // Usamos el ID numérico para la API
         
         console.log(`Guardando edición de ${tipoOverlay}`, { id, data: datosActualizados });
         
@@ -427,12 +438,12 @@ const agregarPersonaSeleccionada = (tipo, rutPersona) => {
         setErroresValidacion({ rut: '', nombre: '', direccion: '' });
       } catch (error) {
         console.error(`Error al actualizar ${tipoOverlay}:`, error);
-        toast.error(`Error al actualizar ${tipoOverlay}: ${error.message || 'Error desconocido'}`);
+        toast.error(`Error al actualizar ${tipoOverlay}: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
       }
     }
   };
 
-  const eliminarPersona = async (indice) => {
+  const eliminarPersona = async (indice : number) => {
     try {
       const datosActuales = obtenerDatosPorTipo(tipoOverlay);
       const persona = datosActuales[indice];
@@ -488,7 +499,7 @@ const agregarPersonaSeleccionada = (tipo, rutPersona) => {
       }
     } catch (error) {
       console.error(`Error al eliminar ${tipoOverlay}:`, error);
-      toast.error(`Error al eliminar ${tipoOverlay}: ${error.message || 'Error desconocido'}`);
+      toast.error(`Error al eliminar ${tipoOverlay}: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   };
 
@@ -497,7 +508,7 @@ const agregarPersonaSeleccionada = (tipo, rutPersona) => {
 
 // En CaseForm.jsx, reemplazar completamente la función onSubmit:
 
-const onSubmit = async (data) => {
+const onSubmit = async (data : LawsuitDetailResponse) => {
   console.log('🚀 onSubmit ejecutado con data:', data);
   console.log('🚀 personasSeleccionadas:', personasSeleccionadas);
   console.log('🚀 claimsList:', claimsList);
@@ -526,17 +537,17 @@ const onSubmit = async (data) => {
     }
     
     // CAMBIO: Enviar RUTs como strings al backend
-    const lawsuitRequest = {
+    const lawsuitRequest : LawsuitRequest = {
       title: data.title,
       proceedingType: data.proceedingType,
-      subjectMatter: data.legalMatter,
+      subjectMatter: data.subjectMatter,
       plaintiffs: plaintiffRuts,                    // Array de RUTs como strings
       defendants: defendantRuts,                    // Array de RUTs como strings
-      attorneyOfRecord: attorneyRuts.length > 0 ? attorneyRuts[0] : undefined,     // RUT como string
+      attorneyOfRecord: attorneyRuts[0],     // RUT como string
       representative: representativeRuts.length > 0 ? representativeRuts[0] : undefined, // RUT como string
       claims: claimsList,
       institution: data.institution,
-      narrative: data.description
+      narrative: data.narrative
     };
     
     // LOGS DE DEBUG - AQUÍ VAN LOS LOGS
@@ -560,7 +571,7 @@ const onSubmit = async (data) => {
     
   } catch (error) {
     console.error('🔥 Error completo:', error);
-    toast.error(`Error al crear el caso: ${error.message || 'Error desconocido'}`);
+    toast.error(`Error al crear el caso: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
   } finally {
     setSaving(false);
   }
@@ -597,7 +608,7 @@ const onSubmit = async (data) => {
   ];
 
   // Funciones para peticiones
-const handleAddClaim = (claim) => {
+const handleAddClaim = (claim : string) => {
   // CAMBIO: Verificar que claim existe y es string antes de usar trim
   if (!claim || typeof claim !== 'string') {
     console.log('handleAddClaim recibió:', claim);
@@ -617,7 +628,7 @@ const handleAddClaim = (claim) => {
   }
 };
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e : KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       // CAMBIO: Asegurar que claimInput existe
@@ -627,14 +638,14 @@ const handleAddClaim = (claim) => {
     }
   };
 
-  const handleDeleteClaim = (claimToDelete) => {
+  const handleDeleteClaim = (claimToDelete : string) => {
     setClaimsList(prev => prev.filter(claim => claim !== claimToDelete));
   };
 
   // Componente de búsqueda con autocompletado
-  const AutocompleteSearch = ({ tipo, placeholder, onSelect }) => {
+  const AutocompleteSearch = ({ tipo, placeholder, onSelect } : {tipo: string, placeholder: string, onSelect: any}) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [results, setResults] = useState([]);
+    const [results, setResults] = useState<ParticipantSummaryResponse[]>([]);
     const [showResults, setShowResults] = useState(false);
     const [showingRecommendations, setShowingRecommendations] = useState(false);
     const searchRef = useRef(null);
@@ -686,8 +697,8 @@ const handleAddClaim = (claim) => {
 
     // Manejar click fuera del componente para cerrar resultados
     useEffect(() => {
-      const handleClickOutside = (event) => {
-        if (searchRef.current && !searchRef.current.contains(event.target)) {
+      const handleClickOutside = (event : any) => {
+        if (searchRef.current && !(searchRef.current as any).contains(event.target)) {
           setShowResults(false);
         }
       };
@@ -698,12 +709,12 @@ const handleAddClaim = (claim) => {
       };
     }, []);
 
-    const handleSearchChange = (e) => {
+    const handleSearchChange = (e : any) => {
       setSearchTerm(e.target.value);
       setShowResults(true);
     };
 
-    const handleSelectResult = (persona) => {
+    const handleSelectResult = (persona : ParticipantSummaryResponse) => {
       onSelect(persona.idNumber);
       setSearchTerm('');
       setShowResults(false);
@@ -759,9 +770,9 @@ const handleAddClaim = (claim) => {
   };
 
   // Componente de búsqueda con autocompletado para peticiones predefinidas
-  const PredefinedClaimsAutocomplete = ({ onSelect }) => {
+  const PredefinedClaimsAutocomplete = ({ onSelect } : {onSelect: any}) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [results, setResults] = useState([]);
+    const [results, setResults] = useState<string[]>([]);
     const [showResults, setShowResults] = useState(false);
     const [showingAllOptions, setShowingAllOptions] = useState(false);
     const searchRef = useRef(null);
@@ -791,8 +802,8 @@ const handleAddClaim = (claim) => {
 
     // Manejar click fuera del componente para cerrar resultados
     useEffect(() => {
-      const handleClickOutside = (event) => {
-        if (searchRef.current && !searchRef.current.contains(event.target)) {
+      const handleClickOutside = (event : any) => {
+        if (searchRef.current && !(searchRef.current as any).contains(event.target)) {
           setShowResults(false);
         }
       };
@@ -803,12 +814,12 @@ const handleAddClaim = (claim) => {
       };
     }, []);
 
-    const handleSearchChange = (e) => {
+    const handleSearchChange = (e : any) => {
       setSearchTerm(e.target.value);
       setShowResults(true);
     };
 
-    const handleSelectResult = (claim) => {
+    const handleSelectResult = (claim : string) => {
       onSelect(claim);
       setSearchTerm('');
       setShowResults(false);
@@ -863,7 +874,7 @@ const handleAddClaim = (claim) => {
   };
 
   // Componente para selector múltiple compacto (para la sección integrada)
-  const SelectorMultipleCompacto = ({ tipo, titulo, esOpcional = false }) => {
+  const SelectorMultipleCompacto = ({ tipo, titulo, esOpcional = false } : {tipo: string, titulo: string, esOpcional?: boolean}) => {
     const personas = obtenerDatosPorTipo(tipo);
     const seleccionadas = personasSeleccionadas[tipo] || [];
 
@@ -890,7 +901,7 @@ const handleAddClaim = (claim) => {
           <AutocompleteSearch 
             tipo={tipo} 
             placeholder={`Buscar por RUT o nombre...`}
-            onSelect={(rutPersona) => agregarPersonaSeleccionada(tipo, rutPersona)}
+            onSelect={(rutPersona : string) => agregarPersonaSeleccionada(tipo, rutPersona)}
           />
           
           {seleccionadas.length > 0 ? (
@@ -936,16 +947,16 @@ const handleAddClaim = (claim) => {
         </div>
         
         <div className="bg-[#0F1625] rounded-xl p-8">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
             {/* Tipo de procedimiento y materia legal */}
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               <div>
                 <label className="block mb-4 text-white font-medium">Título Caso</label>
                 <input 
-                  {...register('title')}
+                  {...register('title' as any)}
                   placeholder=""
                   className={`w-full bg-[#080d1a] text-white p-3 rounded-md border ${
-                    errors.title ? 'border-red-500' : 'border-gray-500'
+                    (errors as any).title ? 'border-red-500' : 'border-gray-500'
                   } hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors resize-none`}
                 />
               </div>
@@ -1078,7 +1089,7 @@ const handleAddClaim = (claim) => {
                       type="text"
                       value={claimInput}
                       onChange={(e) => setClaimInput(e.target.value)}
-                      onKeyPress={handleKeyPress}
+                      onKeyPress={handleKeyPress as any}
                       placeholder="Escriba una petición personalizada"
                       className="flex-1 bg-[#2D3342] text-white p-3 rounded-md border border-gray-500 hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors"
                     />
@@ -1260,7 +1271,7 @@ const handleAddClaim = (claim) => {
                     <div key={idx} className="bg-gray-700 p-3 rounded-md">
                       <div className="font-medium">{persona.fullName}</div>
                       <div className="text-sm text-gray-300">{persona.idNumber}</div>
-                      <div className="text-sm text-gray-400">{persona.address}</div>
+                      <div className="text-sm text-gray-400">{"Poner direccion"}</div>
                       <div className="flex gap-2 mt-2">
                         <button 
                           onClick={() => editarPersona(idx)}

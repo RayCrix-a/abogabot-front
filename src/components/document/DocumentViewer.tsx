@@ -2,8 +2,15 @@ import { useState, useEffect } from 'react';
 import { FiShare2, FiEye, FiFileText } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { Document, Paragraph, TextRun, Packer } from 'docx';
+import { LawsuitDetailResponse } from '@/generated/api/data-contracts';
 
-const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument }) => {
+export interface DocumentType {
+  title: string
+  content: string,
+  status: string
+}
+
+const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument } :  {documentData : DocumentType, lawsuit : LawsuitDetailResponse, onGenerateDocument: any}) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
@@ -18,7 +25,7 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument }) => {
   }, [documentData]);
   
   // Función para convertir texto a párrafos de Word
-  const convertToWordParagraphs = (text) => {
+  const convertToWordParagraphs = (text : string) => {
     return text.split('\n').map(line => {
       return new Paragraph({
         children: [
@@ -33,7 +40,7 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument }) => {
           line: 360,
         },
         alignment: 'justify'
-      });
+      } as any);
     });
   };
 
@@ -76,7 +83,7 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument }) => {
   };
   
   // Función para manejar compartir
-  const handleShare = (e) => {
+  const handleShare = (e : any) => {
     e.preventDefault();
     if (!email) {
       toast.error('Por favor ingrese un correo electrónico');
@@ -98,7 +105,7 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument }) => {
   };
 
   // Click fuera del modal para cerrar
-  const handleClickOutside = (e) => {
+  const handleClickOutside = (e : any) => {
     if (e.target === e.currentTarget) {
       setIsPreviewOpen(false);
     }
@@ -122,7 +129,7 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument }) => {
       console.log(`Iniciando generación para demanda ID: ${lawsuit.id}`);
       
       // Función para manejar cada chunk del stream
-      const handleChunk = (chunk) => {
+      const handleChunk = (chunk : string) => {
         setMarkdownContent(prevContent => prevContent + chunk);
       };
       
@@ -136,7 +143,7 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument }) => {
   };
 
   // Función para obtener color según estado
-  const getStatusColor = (status) => {
+  const getStatusColor = (status : string) => {
     switch (status) {
       case 'Finalizado':
         return 'bg-green-900 text-green-300';
@@ -174,7 +181,7 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument }) => {
                 <tbody>
                   <tr className="border-b border-gray-700">
                     <td className="py-2 text-gray-400">Tipo de procedimiento</td>
-                    <td className="py-2 text-white">{lawsuit?.proceedingType?.description || 'No especificado'}</td>
+                    <td className="py-2 text-white">{lawsuit?.proceedingType || 'No especificado'}</td>
                   </tr>
                   <tr className="border-b border-gray-700">
                     <td className="py-2 text-gray-400">Materia</td>

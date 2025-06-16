@@ -3,13 +3,14 @@ import { lawsuitResource } from '@/lib/apiClient';
 import { toast } from 'react-toastify';
 import { useState, useCallback } from 'react';
 import { useAuth0 } from '@auth0/auth0-react'
+import { LawsuitRequest, LawsuitStatus, LawsuitSummaryResponse } from '@/generated/api/data-contracts';
 
 /**
  * Hook para gestionar demandas legales
  * Proporciona funciones para listar, obtener, crear y eliminar demandas
  */
 export const useLawsuits = () => {
-  const { user, getAccessTokenSilently } = useAuth0();
+  const { getAccessTokenSilently } = useAuth0();
   const queryClient = useQueryClient();
 
   // Query para obtener todas las demandas
@@ -33,7 +34,7 @@ export const useLawsuits = () => {
 
   // Mutación para crear una nueva demanda
 const createLawsuitMutation = useMutation({
-  mutationFn: async (data) => {
+  mutationFn: async (data : LawsuitRequest) => {
     const accessToken = await getAccessTokenSilently();
     const response = await lawsuitResource.createLawsuit(data, {
         headers: {
@@ -48,13 +49,13 @@ const createLawsuitMutation = useMutation({
   },
   onError: (error) => {
     console.error('Error al crear demanda:', error);
-    toast.error(`Error al crear la demanda: ${error.message || 'Error desconocido'}`);
+    toast.error(`Error al crear la demanda: ${error && error instanceof Error  ? error.message : 'Error desconocido'}`);
   }
 });
 
   // Mutación para actualizar una demanda
   const updateLawsuitMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
+    mutationFn: async ({ id, data} : { id: number, data: LawsuitRequest}) => {
       const accessToken = await getAccessTokenSilently();
       const response = await lawsuitResource.updateLawsuit(id, data, {
         headers: {
@@ -70,11 +71,11 @@ const createLawsuitMutation = useMutation({
     },
     onError: (error) => {
       console.error('Error al actualizar demanda:', error);
-      toast.error(`Error al actualizar la demanda: ${error.message || 'Error desconocido'}`);
+      toast.error(`Error al actualizar la demanda: ${error && error instanceof Error  ? error.message : 'Error desconocido'}`);
     }
   });  // Mutación para eliminar una demanda
   const deleteLawsuitMutation = useMutation({
-    mutationFn: async (id) => {
+    mutationFn: async (id : number) => {
       console.log('Ejecutando mutación para eliminar demanda con ID:', id);
       try {
         const accessToken = await getAccessTokenSilently();
@@ -102,7 +103,7 @@ const createLawsuitMutation = useMutation({
       await queryClient.cancelQueries(['lawsuit', deletedId]);
       
       // Guardar estado previo
-      const previousLawsuits = queryClient.getQueryData(['lawsuits']);
+      const previousLawsuits = queryClient.getQueryData(['lawsuits']) as LawsuitSummaryResponse[];
       console.log('Estado previo guardado:', previousLawsuits ? 'Sí' : 'No');
       
       // Actualizar optimistamente
@@ -129,48 +130,11 @@ const createLawsuitMutation = useMutation({
         queryClient.setQueryData(['lawsuits'], context.previousLawsuits);
       }
       console.error('Error al eliminar demanda:', error);
-      toast.error(`Error al eliminar la demanda: ${error.message || 'Error desconocido'}`);
+      toast.error(`Error al eliminar la demanda: ${error && error instanceof Error  ? error.message : 'Error desconocido'}`);
     },
     onSettled: () => {
       console.log('Operación finalizada (onSettled)');
       queryClient.invalidateQueries({ queryKey: ['lawsuits'] });
-    }
-  });
-  
-  // Mutación para actualizar el estado de una demanda
-  const updateLawsuitStatusMutation = useMutation({
-    mutationFn: async ({ id, status }) => {
-      const accessToken = await getAccessTokenSilently();
-      const response = await lawsuitResource.updateLawsuit(id, { status }, {
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-        }
-    });
-      return response.data;
-    },
-    onSuccess: (_, { id, status }) => {
-      queryClient.invalidateQueries(['lawsuits']);
-      queryClient.invalidateQueries(['lawsuit', id]);
-      let message = 'Estado actualizado correctamente';
-      switch (status) {
-        case 'IN_PROGRESS':
-          message = 'Caso marcado como en curso';
-          break;
-        case 'PENDING':
-          message = 'Caso marcado como pendiente';
-          break;
-        case 'FINALIZED':
-          message = 'Caso finalizado y movido al historial';
-          break;
-        case 'DRAFT':
-          message = 'Caso guardado como borrador';
-          break;
-      }
-      toast.success(message);
-    },
-    onError: (error) => {
-      console.error('Error al actualizar el estado:', error);
-      toast.error('Error al actualizar el estado del caso');
     }
   });
 
@@ -179,7 +143,7 @@ const createLawsuitMutation = useMutation({
    * @param {number} id - Identificador de la demanda
    * @returns {Object} - Query result con la demanda solicitada
    */
-  const useLawsuit = (id) => {
+  const useLawsuit = (id : number) => {
     return useQuery({
       queryKey: ['lawsuit', id],
       queryFn: async () => {
@@ -201,7 +165,7 @@ const createLawsuitMutation = useMutation({
    * @param {number} id - Identificador de la demanda
    * @returns {Object} - Query result con las revisiones
    */
-  const useLawsuitRevisions = (id) => {
+  const useLawsuitRevisions = (id : number) => {
     return useQuery({
       queryKey: ['lawsuit-revisions', id],
       queryFn: async () => {
@@ -223,7 +187,7 @@ const createLawsuitMutation = useMutation({
    * @param {number} id - Identificador de la demanda
    * @returns {string} - Query result con las revisiones
    */
-  const useLawsuitLastRevisions = (id) => {
+  const useLawsuitLastRevisions = (id : number) => {
     return useQuery({
       queryKey: ['lawsuit-last-revisions', id],
       queryFn: async () => {
@@ -237,7 +201,7 @@ const createLawsuitMutation = useMutation({
     });
           const innerResponse = response.data;
           if (!innerResponse || innerResponse.length === 0) return null;
-          const lastRevision = innerResponse.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+          const lastRevision = innerResponse.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
           const responseRevision = await lawsuitResource.getRevisionResponse(id, lastRevision.uuid, {
         headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -249,7 +213,7 @@ const createLawsuitMutation = useMutation({
           return null;
         }
       },
-      enabled: !!id && id !== 'undefined',
+      enabled: !!id,
       retry: false
     });
   };
@@ -260,7 +224,7 @@ const createLawsuitMutation = useMutation({
    * @param {string} uuid - Identificador de la revisión
    * @returns {Object} - Query result con la revisión
    */
-  const useLawsuitRevision = (id, uuid) => {
+  const useLawsuitRevision = (id: number, uuid: string) => {
     return useQuery({
       queryKey: ['lawsuit-revision', id, uuid],
       queryFn: async () => {
@@ -278,9 +242,9 @@ const createLawsuitMutation = useMutation({
   };
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const generate = useCallback(async (id, onProgress) => {
+  const generate = useCallback(async (id : number, onProgress : (chunk: string) => void) => {
     try {
       setLoading(true);
       console.log(`Iniciando generación de documento para caso ID: ${id}`);
@@ -296,7 +260,7 @@ const createLawsuitMutation = useMutation({
         }
       });
 
-      if (!response.ok) {
+      if (!response.ok || !response.body) {
         throw new Error(`Error al generar documento: ${response.statusText}`);
       }
 
@@ -322,7 +286,7 @@ const createLawsuitMutation = useMutation({
       return accumulatedContent;
     } catch (error) {
       console.error('Error en generateLawsuitDocument:', error);
-      setError(error.message);
+      setError(error && error instanceof Error  ? error.message : "Error desconocido");
       throw error;
     } finally {
       setLoading(false);
@@ -341,16 +305,13 @@ const createLawsuitMutation = useMutation({
   
   // CAMBIOS: Usar mutateAsync para poder hacer await
   createLawsuit: createLawsuitMutation.mutateAsync,
-  isCreatingLawsuit: createLawsuitMutation.isPending,
+  isCreatingLawsuit: createLawsuitMutation.isLoading,
   
   updateLawsuit: updateLawsuitMutation.mutateAsync,
-  isUpdatingLawsuit: updateLawsuitMutation.isPending,
+  isUpdatingLawsuit: updateLawsuitMutation.isLoading,
   
   deleteLawsuit: deleteLawsuitMutation.mutateAsync,
-  isDeletingLawsuit: deleteLawsuitMutation.isPending,
-  
-  updateLawsuitStatus: updateLawsuitStatusMutation.mutateAsync,
-  isUpdatingStatus: updateLawsuitStatusMutation.isPending,
+  isDeletingLawsuit: deleteLawsuitMutation.isLoading,
   
   loading,
   error,

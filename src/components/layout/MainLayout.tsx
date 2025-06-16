@@ -5,7 +5,7 @@ import Sidebar from './Sidebar';
 import Footer from './Footer';
 import { withAuthenticationRequired } from '@auth0/auth0-react'
 
-const MainLayout = ({ children, title, description }) => {
+const MainLayout = ({ children, title, description } : {children: any, title: string, description: string}) => {
   const [isMounted, setIsMounted] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 

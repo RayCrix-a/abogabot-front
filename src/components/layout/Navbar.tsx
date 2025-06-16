@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { FiMenu, FiBell, FiMoon, FiSun, FiLogOut, FiSettings, FiUser } from 'react-icons/fi';
 import { useAuth0, withAuthenticationRequired } from '@auth0/auth0-react'
 
-const Navbar = ({ toggleSidebar }) => {
+const Navbar = ({ toggleSidebar } : any) => {
   const { user, logout } = useAuth0();
   const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -12,8 +12,8 @@ const Navbar = ({ toggleSidebar }) => {
   const profileRef = useRef(null);
 
   // Cerrar menú de perfil al hacer clic fuera
-  const handleClickOutside = (e) => {
-    if (profileRef.current && !profileRef.current.contains(e.target)) {
+  const handleClickOutside = (e : any) => {
+    if (profileRef.current && !(profileRef.current as any).contains(e.target)) {
       setIsProfileOpen(false);
     }
   };

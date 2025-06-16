@@ -7,6 +7,7 @@ import {
 } from '@/lib/apiClient';
 import { toast } from 'react-toastify';
 import { useAuth0 } from '@auth0/auth0-react'
+import { ParticipantRequest } from '@/generated/api/data-contracts';
 
 
 export const useParticipants = () => {
@@ -160,7 +161,7 @@ export const useParticipants = () => {
 
   // Mutaciones para crear participantes
   const createPlaintiffMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (data : ParticipantRequest) => {
       const accessToken = await getAccessTokenSilently();
       const response = await plaintiffResource.createPlaintiff(data, {
         headers: {
@@ -174,12 +175,12 @@ export const useParticipants = () => {
       toast.success('Demandante creado exitosamente');
     },
     onError: (error) => {
-      toast.error(`Error al crear demandante: ${error.message}`);
+      toast.error(`Error al crear demandante: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   });
 
   const createDefendantMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (data : ParticipantRequest) => {
       const accessToken = await getAccessTokenSilently();
       const response = await defendantResource.createDefendant(data, {
         headers: {
@@ -193,12 +194,12 @@ export const useParticipants = () => {
       toast.success('Demandado creado exitosamente');
     },
     onError: (error) => {
-      toast.error(`Error al crear demandado: ${error.message}`);
+      toast.error(`Error al crear demandado: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   });
 
   const createLawyerMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (data : ParticipantRequest) => {
       const accessToken = await getAccessTokenSilently();
       const response = await lawyerResource.createLawyer(data, {
         headers: {
@@ -212,12 +213,12 @@ export const useParticipants = () => {
       toast.success('Abogado creado exitosamente');
     },
     onError: (error) => {
-      toast.error(`Error al crear abogado: ${error.message}`);
+      toast.error(`Error al crear abogado: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   });
 
   const createRepresentativeMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (data : ParticipantRequest) => {
       const accessToken = await getAccessTokenSilently();
       const response = await representativeResource.createRepresentative(data, {
         headers: {
@@ -231,13 +232,13 @@ export const useParticipants = () => {
       toast.success('Representante creado exitosamente');
     },
     onError: (error) => {
-      toast.error(`Error al crear representante: ${error.message}`);
+      toast.error(`Error al crear representante: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   });
 
   // Mutaciones para actualizar participantes
   const updatePlaintiffMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
+    mutationFn: async ({ id, data } : { id: number, data: ParticipantRequest}) => {
       const accessToken = await getAccessTokenSilently();
       const response = await plaintiffResource.updatePlaintiff(id, data, {
         headers: {
@@ -251,12 +252,12 @@ export const useParticipants = () => {
       toast.success('Demandante actualizado exitosamente');
     },
     onError: (error) => {
-      toast.error(`Error al actualizar demandante: ${error.message}`);
+      toast.error(`Error al actualizar demandante: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   });
 
   const updateDefendantMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
+    mutationFn: async ({ id, data } : { id: number, data: ParticipantRequest}) => {
       const accessToken = await getAccessTokenSilently();
       const response = await defendantResource.updateDefendant(id, data, {
         headers: {
@@ -270,12 +271,12 @@ export const useParticipants = () => {
       toast.success('Demandado actualizado exitosamente');
     },
     onError: (error) => {
-      toast.error(`Error al actualizar demandado: ${error.message}`);
+      toast.error(`Error al actualizar demandado: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   });
 
   const updateLawyerMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
+    mutationFn: async ({ id, data } : { id: number, data: ParticipantRequest}) => {
       const accessToken = await getAccessTokenSilently();
       const response = await lawyerResource.updateLawyer(id, data, {
         headers: {
@@ -289,12 +290,12 @@ export const useParticipants = () => {
       toast.success('Abogado actualizado exitosamente');
     },
     onError: (error) => {
-      toast.error(`Error al actualizar abogado: ${error.message}`);
+      toast.error(`Error al actualizar abogado: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   });
 
   const updateRepresentativeMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
+    mutationFn: async ({ id, data } : { id: number, data: ParticipantRequest}) => {
       const accessToken = await getAccessTokenSilently();
       const response = await representativeResource.updateRepresentative(id, data, {
         headers: {
@@ -308,13 +309,13 @@ export const useParticipants = () => {
       toast.success('Representante actualizado exitosamente');
     },
     onError: (error) => {
-      toast.error(`Error al actualizar representante: ${error.message}`);
+      toast.error(`Error al actualizar representante: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   });
 
   // Mutaciones para eliminar participantes
   const deletePlaintiffMutation = useMutation({
-    mutationFn: async (id) => {
+    mutationFn: async (id : number) => {
       const accessToken = await getAccessTokenSilently();
       const response = await plaintiffResource.deletePlaintiff(id, {
         headers: {
@@ -328,12 +329,12 @@ export const useParticipants = () => {
       toast.success('Demandante eliminado exitosamente');
     },
     onError: (error) => {
-      toast.error(`Error al eliminar demandante: ${error.message}`);
+      toast.error(`Error al eliminar demandante: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   });
 
   const deleteDefendantMutation = useMutation({
-    mutationFn: async (id) => {
+    mutationFn: async (id : number) => {
       const accessToken = await getAccessTokenSilently();
       const response = await defendantResource.deleteDefendant(id, {
         headers: {
@@ -347,12 +348,12 @@ export const useParticipants = () => {
       toast.success('Demandado eliminado exitosamente');
     },
     onError: (error) => {
-      toast.error(`Error al eliminar demandado: ${error.message}`);
+      toast.error(`Error al eliminar demandado: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   });
 
   const deleteLawyerMutation = useMutation({
-    mutationFn: async (id) => {
+    mutationFn: async (id : number) => {
       const accessToken = await getAccessTokenSilently();
       const response = await lawyerResource.deleteLawyer(id, {
         headers: {
@@ -366,12 +367,12 @@ export const useParticipants = () => {
       toast.success('Abogado eliminado exitosamente');
     },
     onError: (error) => {
-      toast.error(`Error al eliminar abogado: ${error.message}`);
+      toast.error(`Error al eliminar abogado: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   });
 
   const deleteRepresentativeMutation = useMutation({
-    mutationFn: async (id) => {
+    mutationFn: async (id : number) => {
       const accessToken = await getAccessTokenSilently();
       const response = await representativeResource.deleteRepresentative(id, {
         headers: {
@@ -385,7 +386,7 @@ export const useParticipants = () => {
       toast.success('Representante eliminado exitosamente');
     },
     onError: (error) => {
-      toast.error(`Error al eliminar representante: ${error.message}`);
+      toast.error(`Error al eliminar representante: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   });
 
