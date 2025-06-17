@@ -21,19 +21,31 @@ export interface Persona extends PersonaSummary {
   direccion: string
 }
 
+interface FormSchema {
+  title: string,
+  proceedingType: string,
+  legalMatter: string,
+  plaintiffIds: number[],
+  defendantIds: number[],
+  attorneyIds: number[],
+  representativeIds: number[],
+  institution: string,
+  description: string,
+  claims: string[]
+}
 
 // Esquema de validación actualizado para múltiples participantes
 const caseSchema = z.object({
   title: z.string().max(100, 'El título no puede exceder 100 caracteres'),
   proceedingType: z.string().min(1, 'Seleccione un tipo de procedimiento'),
   legalMatter: z.string().min(1, 'Seleccione una materia legal'),
-  
+
   // CAMBIO: Aceptar números en lugar de strings
   plaintiffIds: z.array(z.number()).min(1, 'Debe seleccionar al menos un demandante'),
   defendantIds: z.array(z.number()).min(1, 'Debe seleccionar al menos un demandado'),
   attorneyIds: z.array(z.number()).optional(),
   representativeIds: z.array(z.number()).optional(),
-  
+
   institution: z.string().min(1, 'Tribunal requerido'),
   description: z.string().min(20, 'La descripción debe tener al menos 20 caracteres'),
   claims: z.array(z.string()).optional()
@@ -45,12 +57,12 @@ const CaseForm = () => {
   const [claimInput, setClaimInput] = useState('');
   const [claimsList, setClaimsList] = useState<string[]>([]);
   const [showCustomInput, setShowCustomInput] = useState(false);
-  
+
   // Estados para overlay de gestión de participantes
   const [overlayAbierto, setOverlayAbierto] = useState(false);
   const [tipoOverlay, setTipoOverlay] = useState('');
   const [editandoIndice, setEditandoIndice] = useState(-1);
-  
+
   // Estados para selecciones múltiples
   // Ahora almacenamos objetos {id, rut} en lugar de solo RUTs
   const [personasSeleccionadas, setPersonasSeleccionadas] = useState<Record<string, PersonaSummary[]>>({
@@ -59,7 +71,7 @@ const CaseForm = () => {
     abogados: [],
     representantes: []
   });
-  
+
   // Estado para el formulario del overlay
   const [formData, setFormData] = useState<Persona>({
     id: null,  // Agregamos el campo id para guardar el ID numérico
@@ -73,125 +85,125 @@ const CaseForm = () => {
     nombre: '',
     direccion: ''
   });
-  
+
   // Hooks para acceder a datos de la API
-const { createLawsuit, isCreatingLawsuit } = useLawsuits();  
-const { 
+  const { createLawsuit, isCreatingLawsuit } = useLawsuits();
+  const {
     plaintiffs, defendants, lawyers, representatives,
     createPlaintiff, createDefendant, createLawyer, createRepresentative,
     updatePlaintiff, updateDefendant, updateLawyer, updateRepresentative,
     deletePlaintiff, deleteDefendant, deleteLawyer, deleteRepresentative,
-    isLoadingPlaintiffs, isLoadingDefendants, isLoadingLawyers, isLoadingRepresentatives 
+    isLoadingPlaintiffs, isLoadingDefendants, isLoadingLawyers, isLoadingRepresentatives
   } = useParticipants();
   const { proceedingTypeOptions, isLoading: isLoadingProceedingTypes } = useProceedingTypes();
-  
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm({
+
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<FormSchema>({
     resolver: zodResolver(caseSchema),
     defaultValues: {
       proceedingType: '',
       legalMatter: '',
-      plaintiffIds: ([] as number[]),
-      defendantIds: ([] as number[]),
-      attorneyIds: ([] as number[]),
-      representativeIds: ([] as number[]),
+      plaintiffIds: [],
+      defendantIds: [],
+      attorneyIds: [],
+      representativeIds: [],
       institution: 'S.J.L. EN LO CIVIL',
       description: '',
-      claims: ([] as string[])
+      claims: [],
     }
   });
 
   // ... (mantener todas las funciones de validación y manejo sin cambios)
   // Funciones de validación
-  const validarRUT = (rut : string) => {
+  const validarRUT = (rut: string) => {
     const rutLimpio = rut.replace(/[^0-9kK]/g, '');
-    
+
     if (rutLimpio.length < 8 || rutLimpio.length > 9) {
       return 'El RUT debe tener 7-8 dígitos más el dígito verificador';
     }
-    
+
     const cuerpo = rutLimpio.slice(0, -1);
     const dv = rutLimpio.slice(-1).toUpperCase();
-    
+
     if (cuerpo.length < 7 || cuerpo.length > 8) {
       return 'El RUT debe tener 7-8 dígitos';
     }
-    
+
     if (!/^[0-9K]$/.test(dv)) {
       return 'El dígito verificador debe ser un número (0-9) o la letra K';
     }
-    
+
     return '';
   };
 
-  const formatearRUT = (valor : string) => {
+  const formatearRUT = (valor: string) => {
     const limpio = valor.replace(/[^0-9kK]/g, '');
-    
+
     if (limpio.length <= 1) return limpio;
-    
+
     const cuerpo = limpio.slice(0, -1);
     const dv = limpio.slice(-1).toUpperCase();
-    
+
     let cuerpoFormateado = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    
+
     return `${cuerpoFormateado}-${dv}`;
   };
 
-  const validarNombre = (nombre : string) => {
+  const validarNombre = (nombre: string) => {
     if (!nombre.trim()) {
       return 'El nombre es obligatorio';
     }
-    
+
     if (nombre.length > 100) {
       return 'El nombre no puede exceder 100 caracteres';
     }
-    
+
     if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(nombre)) {
       return 'El nombre solo puede contener letras y tildes';
     }
-    
+
     return '';
   };
 
-  const validarDireccion = (direccion : string) => {
+  const validarDireccion = (direccion: string) => {
     if (!direccion.trim()) {
       return 'La dirección es obligatoria';
     }
-    
+
     if (direccion.length > 255) {
       return 'La dirección no puede exceder 255 caracteres';
     }
-    
+
     return '';
   };
 
-  const manejarCambioRUT = (valor : string) => {
+  const manejarCambioRUT = (valor: string) => {
     const soloValidos = valor.replace(/[^0-9kK]/g, '');
-    
+
     if (soloValidos.length > 9) return;
-    
+
     const rutFormateado = formatearRUT(soloValidos);
     const error = validarRUT(rutFormateado);
-    
+
     setFormData(prev => ({ ...prev, rut: rutFormateado }));
     setErroresValidacion(prev => ({ ...prev, rut: error }));
   };
 
-  const manejarCambioNombre = (valor : string) => {
+  const manejarCambioNombre = (valor: string) => {
     const soloLetras = valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '');
-    
+
     if (soloLetras.length > 100) return;
-    
+
     const error = validarNombre(soloLetras);
-    
+
     setFormData(prev => ({ ...prev, nombre: soloLetras }));
     setErroresValidacion(prev => ({ ...prev, nombre: error }));
   };
 
-  const manejarCambioDireccion = (valor : string) => {
+  const manejarCambioDireccion = (valor: string) => {
     if (valor.length > 255) return;
-    
+
     const error = validarDireccion(valor);
-    
+
     setFormData(prev => ({ ...prev, direccion: valor }));
     setErroresValidacion(prev => ({ ...prev, direccion: error }));
   };
@@ -200,13 +212,13 @@ const {
     const rutValido = !erroresValidacion.rut && formData.rut.trim();
     const nombreValido = !erroresValidacion.nombre && formData.nombre.trim();
     const direccionValida = !erroresValidacion.direccion && formData.direccion.trim();
-    
+
     return rutValido && nombreValido && direccionValida;
   };
 
   // Funciones para manejar selecciones múltiples
-  const obtenerDatosPorTipo = (tipo : string) => {
-    switch(tipo) {
+  const obtenerDatosPorTipo = (tipo: string) => {
+    switch (tipo) {
       case 'demandantes': return plaintiffs || [];
       case 'demandados': return defendants || [];
       case 'abogados': return lawyers || [];
@@ -215,27 +227,27 @@ const {
     }
   };
 
-const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
-  const yaSeleccionada = personasSeleccionadas[tipo].some(p => p.rut === rutPersona);
-  
-  if (rutPersona && !yaSeleccionada) {
-    const personas = obtenerDatosPorTipo(tipo);
-    const personaCompleta = personas.find(p => p.idNumber === rutPersona);
-    
-    if (!personaCompleta) {
-      toast.error('No se encontró la información completa de la persona');
-      return;
-    }
-    
-    const nuevaPersona : Persona = { id: personaCompleta.id, rut: rutPersona, nombre: "", direccion: ""};
-    
-    setPersonasSeleccionadas(prev => ({
-      ...prev,
-      [tipo]: [...prev[tipo], nuevaPersona]
-    }));
+  const agregarPersonaSeleccionada = (tipo: string, rutPersona: string) => {
+    const yaSeleccionada = personasSeleccionadas[tipo].some(p => p.rut === rutPersona);
+
+    if (rutPersona && !yaSeleccionada) {
+      const personas = obtenerDatosPorTipo(tipo);
+      const personaCompleta = personas.find(p => p.idNumber === rutPersona);
+
+      if (!personaCompleta) {
+        toast.error('No se encontró la información completa de la persona');
+        return;
+      }
+
+      const nuevaPersona: Persona = { id: personaCompleta.id, rut: rutPersona, nombre: "", direccion: "" };
+
+      setPersonasSeleccionadas(prev => ({
+        ...prev,
+        [tipo]: [...prev[tipo], nuevaPersona]
+      }));
 
       // Actualizar el formulario principal con los IDs numéricos
-      switch(tipo) {
+      switch (tipo) {
         case 'demandantes':
           setValue('plaintiffIds', [...personasSeleccionadas.demandantes.map(p => Number(p.id)), Number(nuevaPersona.id)]);
           break;
@@ -252,14 +264,14 @@ const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
     }
   };
 
-  const eliminarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
+  const eliminarPersonaSeleccionada = (tipo: string, rutPersona: string) => {
     setPersonasSeleccionadas(prev => ({
       ...prev,
       [tipo]: prev[tipo].filter(persona => persona.rut !== rutPersona)
     }));
-    
+
     // Actualizar el formulario principal
-    switch(tipo) {
+    switch (tipo) {
       case 'demandantes':
         setValue('plaintiffIds', personasSeleccionadas.demandantes
           .filter(persona => persona.rut !== rutPersona)
@@ -283,7 +295,7 @@ const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
     }
   };
 
-  const obtenerPersonaPorRut = (tipo : string, rutOPersona : PersonaSummary) => {
+  const obtenerPersonaPorRut = (tipo: string, rutOPersona: PersonaSummary) => {
     const datos = obtenerDatosPorTipo(tipo);
     // Si recibimos un objeto {id, rut}, extraemos el rut
     const rut = typeof rutOPersona === 'object' ? rutOPersona.rut : rutOPersona;
@@ -291,7 +303,7 @@ const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
   };
 
   // Funciones del overlay
-  const abrirOverlay = (tipo : string) => {
+  const abrirOverlay = (tipo: string) => {
     setTipoOverlay(tipo);
     setOverlayAbierto(true);
     setEditandoIndice(-1);
@@ -307,7 +319,7 @@ const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
   };
 
   const obtenerTitulo = () => {
-    const titulos : Record<string, string> = {
+    const titulos: Record<string, string> = {
       'demandantes': 'Gestionar Demandantes',
       'demandados': 'Gestionar Demandados',
       'abogados': 'Gestionar Abogados Patrocinantes',
@@ -320,30 +332,30 @@ const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
     const errorRut = validarRUT(formData.rut);
     const errorNombre = validarNombre(formData.nombre);
     const errorDireccion = validarDireccion(formData.direccion);
-    
+
     setErroresValidacion({
       rut: errorRut,
       nombre: errorNombre,
       direccion: errorDireccion
     });
-    
+
     if (!errorRut && !errorNombre && !errorDireccion && formularioEsValido()) {
       const datosActuales = obtenerDatosPorTipo(tipoOverlay);
       const rutExistente = datosActuales.find(persona => persona.idNumber === formData.rut);
-      
+
       if (rutExistente) {
         setErroresValidacion(prev => ({ ...prev, rut: 'Este RUT ya está registrado' }));
         return;
       }
-      
+
       try {
         const newParticipant = {
           idNumber: formData.rut,
           fullName: formData.nombre,
           address: formData.direccion
         };
-        
-        switch(tipoOverlay) {
+
+        switch (tipoOverlay) {
           case 'demandantes':
             await createPlaintiff(newParticipant);
             break;
@@ -356,8 +368,8 @@ const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
           case 'representantes':
             await createRepresentative(newParticipant);
             break;
-        }        
-        
+        }
+
         setFormData({ id: null, rut: '', nombre: '', direccion: '' });
         setErroresValidacion({ rut: '', nombre: '', direccion: '' });
       } catch (error) {
@@ -366,7 +378,7 @@ const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
     }
   };
 
-  const editarPersona = (indice : number) => {
+  const editarPersona = (indice: number) => {
     const datosActuales = obtenerDatosPorTipo(tipoOverlay);
     const persona = datosActuales[indice];
     if (persona) {
@@ -385,13 +397,13 @@ const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
     const errorRut = validarRUT(formData.rut);
     const errorNombre = validarNombre(formData.nombre);
     const errorDireccion = validarDireccion(formData.direccion);
-    
+
     setErroresValidacion({
       rut: errorRut,
       nombre: errorNombre,
       direccion: errorDireccion
     });
-    
+
     if (!errorRut && !errorNombre && !errorDireccion && formularioEsValido()) {
       try {
         const datosActualizados = {
@@ -400,38 +412,38 @@ const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
           fullName: formData.nombre,
           address: formData.direccion
         };
-        
+
         const id = formData.id!; // Usamos el ID numérico para la API
-        
+
         console.log(`Guardando edición de ${tipoOverlay}`, { id, data: datosActualizados });
-        
-        switch(tipoOverlay) {
+
+        switch (tipoOverlay) {
           case 'demandantes':
-            await updatePlaintiff({ 
-              id, 
-              data: datosActualizados 
+            await updatePlaintiff({
+              id,
+              data: datosActualizados
             });
             break;
           case 'demandados':
-            await updateDefendant({ 
-              id, 
-              data: datosActualizados 
+            await updateDefendant({
+              id,
+              data: datosActualizados
             });
             break;
           case 'abogados':
-            await updateLawyer({ 
-              id, 
-              data: datosActualizados 
+            await updateLawyer({
+              id,
+              data: datosActualizados
             });
             break;
           case 'representantes':
-            await updateRepresentative({ 
-              id, 
-              data: datosActualizados 
+            await updateRepresentative({
+              id,
+              data: datosActualizados
             });
             break;
         }
-        
+
         // Limpiar el formulario y cerrar modo edición
         setEditandoIndice(-1);
         setFormData({ id: null, rut: '', nombre: '', direccion: '' });
@@ -443,37 +455,37 @@ const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
     }
   };
 
-  const eliminarPersona = async (indice : number) => {
+  const eliminarPersona = async (indice: number) => {
     try {
       const datosActuales = obtenerDatosPorTipo(tipoOverlay);
       const persona = datosActuales[indice];
-      
+
       if (!persona) {
         toast.error('No se pudo encontrar la persona a eliminar');
         return;
       }
-      
+
       // Usar el ID numérico de la API
       const id = persona.id;
       const rutCompleto = persona.idNumber;
-      
+
       console.log(`Eliminando ${tipoOverlay} con id numérico:`, id);
       console.log(`RUT de la persona:`, rutCompleto);
-      
+
       // Verificamos si la persona está seleccionada en algún grupo
       const estaSeleccionada = Object.keys(personasSeleccionadas).some(
         (tipo) => personasSeleccionadas[tipo].some(p => p.rut === rutCompleto)
       );
-      
+
       if (estaSeleccionada) {
         const confirmacion = window.confirm(
           'Esta persona está seleccionada en el formulario. Si la elimina, se quitará de las selecciones. ¿Desea continuar?'
         );
-        
+
         if (!confirmacion) {
           return;
         }
-        
+
         // Remover de las selecciones
         Object.keys(personasSeleccionadas).forEach((tipo) => {
           if (personasSeleccionadas[tipo].some(p => p.rut === rutCompleto)) {
@@ -483,7 +495,7 @@ const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
       }
 
       // Eliminar de la base de datos usando el ID numérico
-      switch(tipoOverlay) {
+      switch (tipoOverlay) {
         case 'demandantes':
           await deletePlaintiff(id);
           break;
@@ -504,78 +516,78 @@ const agregarPersonaSeleccionada = (tipo : string, rutPersona : string) => {
   };
 
   // Función principal para enviar el caso - ACTUALIZADA
-// En CaseForm.jsx, línea ~290, corregir esta función:
+  // En CaseForm.jsx, línea ~290, corregir esta función:
 
-// En CaseForm.jsx, reemplazar completamente la función onSubmit:
+  // En CaseForm.jsx, reemplazar completamente la función onSubmit:
 
-const onSubmit = async (data : LawsuitDetailResponse) => {
-  console.log('🚀 onSubmit ejecutado con data:', data);
-  console.log('🚀 personasSeleccionadas:', personasSeleccionadas);
-  console.log('🚀 claimsList:', claimsList);
-  
-  setSaving(true);
-  toast.info('Procesando solicitud...');
-  
-  try {
-    // CAMBIO: Obtener RUTs en lugar de IDs numéricos
-    const plaintiffRuts = personasSeleccionadas.demandantes.map(p => p.rut);
-    const defendantRuts = personasSeleccionadas.demandados.map(p => p.rut);
-    const attorneyRuts = personasSeleccionadas.abogados.map(p => p.rut);
-    const representativeRuts = personasSeleccionadas.representantes.map(p => p.rut);
-    
-    // Validar que tenemos al menos un demandante y demandado
-    if (plaintiffRuts.length === 0) {
-      toast.error('Debe seleccionar al menos un demandante');
+  const onSubmit = async (data: FormSchema) => {
+    console.log('🚀 onSubmit ejecutado con data:', data);
+    console.log('🚀 personasSeleccionadas:', personasSeleccionadas);
+    console.log('🚀 claimsList:', claimsList);
+
+    setSaving(true);
+    toast.info('Procesando solicitud...');
+
+    try {
+      // CAMBIO: Obtener RUTs en lugar de IDs numéricos
+      const plaintiffRuts = personasSeleccionadas.demandantes.map(p => p.rut);
+      const defendantRuts = personasSeleccionadas.demandados.map(p => p.rut);
+      const attorneyRuts = personasSeleccionadas.abogados.map(p => p.rut);
+      const representativeRuts = personasSeleccionadas.representantes.map(p => p.rut);
+
+      // Validar que tenemos al menos un demandante y demandado
+      if (plaintiffRuts.length === 0) {
+        toast.error('Debe seleccionar al menos un demandante');
+        setSaving(false);
+        return;
+      }
+
+      if (defendantRuts.length === 0) {
+        toast.error('Debe seleccionar al menos un demandado');
+        setSaving(false);
+        return;
+      }
+
+      // CAMBIO: Enviar RUTs como strings al backend
+      const lawsuitRequest: LawsuitRequest = {
+        title: data.title,
+        proceedingType: data.proceedingType,
+        subjectMatter: data.legalMatter,
+        plaintiffs: plaintiffRuts,                    // Array de RUTs como strings
+        defendants: defendantRuts,                    // Array de RUTs como strings
+        attorneyOfRecord: attorneyRuts[0],     // RUT como string
+        representative: representativeRuts.length > 0 ? representativeRuts[0] : undefined, // RUT como string
+        claims: claimsList,
+        institution: data.institution,
+        narrative: data.description
+      };
+
+      // LOGS DE DEBUG - AQUÍ VAN LOS LOGS
+      console.log('📤 Datos enviados al backend:', JSON.stringify(lawsuitRequest, null, 2));
+      console.log('📤 Tipos de datos:', {
+        proceedingType: typeof lawsuitRequest.proceedingType,
+        subjectMatter: typeof lawsuitRequest.subjectMatter,
+        plaintiffs: Array.isArray(lawsuitRequest.plaintiffs) && lawsuitRequest.plaintiffs.map(p => typeof p),
+        defendants: Array.isArray(lawsuitRequest.defendants) && lawsuitRequest.defendants.map(d => typeof d),
+        attorneyOfRecord: typeof lawsuitRequest.attorneyOfRecord,
+        representative: typeof lawsuitRequest.representative,
+        claims: Array.isArray(lawsuitRequest.claims) && lawsuitRequest.claims.map(c => typeof c),
+        institution: typeof lawsuitRequest.institution,
+        narrative: typeof lawsuitRequest.narrative
+      });
+
+      // Llamada a la API
+      await createLawsuit(lawsuitRequest);
+      toast.success('Caso creado exitosamente');
+      router.push('/');
+
+    } catch (error) {
+      console.error('🔥 Error completo:', error);
+      toast.error(`Error al crear el caso: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
+    } finally {
       setSaving(false);
-      return;
     }
-    
-    if (defendantRuts.length === 0) {
-      toast.error('Debe seleccionar al menos un demandado');
-      setSaving(false);
-      return;
-    }
-    
-    // CAMBIO: Enviar RUTs como strings al backend
-    const lawsuitRequest : LawsuitRequest = {
-      title: data.title,
-      proceedingType: data.proceedingType,
-      subjectMatter: data.subjectMatter,
-      plaintiffs: plaintiffRuts,                    // Array de RUTs como strings
-      defendants: defendantRuts,                    // Array de RUTs como strings
-      attorneyOfRecord: attorneyRuts[0],     // RUT como string
-      representative: representativeRuts.length > 0 ? representativeRuts[0] : undefined, // RUT como string
-      claims: claimsList,
-      institution: data.institution,
-      narrative: data.narrative
-    };
-    
-    // LOGS DE DEBUG - AQUÍ VAN LOS LOGS
-    console.log('📤 Datos enviados al backend:', JSON.stringify(lawsuitRequest, null, 2));
-    console.log('📤 Tipos de datos:', {
-      proceedingType: typeof lawsuitRequest.proceedingType,
-      subjectMatter: typeof lawsuitRequest.subjectMatter,
-      plaintiffs: Array.isArray(lawsuitRequest.plaintiffs) && lawsuitRequest.plaintiffs.map(p => typeof p),
-      defendants: Array.isArray(lawsuitRequest.defendants) && lawsuitRequest.defendants.map(d => typeof d),
-      attorneyOfRecord: typeof lawsuitRequest.attorneyOfRecord,
-      representative: typeof lawsuitRequest.representative,
-      claims: Array.isArray(lawsuitRequest.claims) && lawsuitRequest.claims.map(c => typeof c),
-      institution: typeof lawsuitRequest.institution,
-      narrative: typeof lawsuitRequest.narrative
-    });
-    
-    // Llamada a la API
-    await createLawsuit(lawsuitRequest);
-    toast.success('Caso creado exitosamente');
-    router.push('/');
-    
-  } catch (error) {
-    console.error('🔥 Error completo:', error);
-    toast.error(`Error al crear el caso: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
   // ... (mantener todo el resto del componente sin cambios hasta la función onSubmit)
   // Opciones para los selectores
@@ -608,27 +620,27 @@ const onSubmit = async (data : LawsuitDetailResponse) => {
   ];
 
   // Funciones para peticiones
-const handleAddClaim = (claim : string) => {
-  // CAMBIO: Verificar que claim existe y es string antes de usar trim
-  if (!claim || typeof claim !== 'string') {
-    console.log('handleAddClaim recibió:', claim);
-    return;
-  }
-  
-  const normalizedClaim = claim.trim().toUpperCase();
-  if (normalizedClaim) {
-    const exists = claimsList.some(c => c.toUpperCase() === normalizedClaim);
-    if (exists) {
-      toast.warning('Esta petición ya ha sido agregada');
-      setClaimInput('');
+  const handleAddClaim = (claim: string) => {
+    // CAMBIO: Verificar que claim existe y es string antes de usar trim
+    if (!claim || typeof claim !== 'string') {
+      console.log('handleAddClaim recibió:', claim);
       return;
     }
-    setClaimsList(prev => [...prev, normalizedClaim]);
-    setClaimInput('');
-  }
-};
 
-  const handleKeyPress = (e : KeyboardEvent) => {
+    const normalizedClaim = claim.trim().toUpperCase();
+    if (normalizedClaim) {
+      const exists = claimsList.some(c => c.toUpperCase() === normalizedClaim);
+      if (exists) {
+        toast.warning('Esta petición ya ha sido agregada');
+        setClaimInput('');
+        return;
+      }
+      setClaimsList(prev => [...prev, normalizedClaim]);
+      setClaimInput('');
+    }
+  };
+
+  const handleKeyPress = (e: KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       // CAMBIO: Asegurar que claimInput existe
@@ -638,12 +650,12 @@ const handleAddClaim = (claim : string) => {
     }
   };
 
-  const handleDeleteClaim = (claimToDelete : string) => {
+  const handleDeleteClaim = (claimToDelete: string) => {
     setClaimsList(prev => prev.filter(claim => claim !== claimToDelete));
   };
 
   // Componente de búsqueda con autocompletado
-  const AutocompleteSearch = ({ tipo, placeholder, onSelect } : {tipo: string, placeholder: string, onSelect: any}) => {
+  const AutocompleteSearch = ({ tipo, placeholder, onSelect }: { tipo: string, placeholder: string, onSelect: any }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [results, setResults] = useState<ParticipantSummaryResponse[]>([]);
     const [showResults, setShowResults] = useState(false);
@@ -686,18 +698,18 @@ const handleAddClaim = (claim : string) => {
           // Verificar que la persona no está ya seleccionada
           const yaSeleccionada = seleccionadas.some(p => p.rut === persona.idNumber);
           return !yaSeleccionada && (
-            persona.fullName.toLowerCase().includes(termLower) || 
+            persona.fullName.toLowerCase().includes(termLower) ||
             persona.idNumber.toLowerCase().includes(termLower)
           );
         })
         .slice(0, 5); // Máximo 5 resultados
-      
+
       setResults(filtered);
     }, [searchTerm, personas, seleccionadas, tipo, showResults]);
 
     // Manejar click fuera del componente para cerrar resultados
     useEffect(() => {
-      const handleClickOutside = (event : any) => {
+      const handleClickOutside = (event: any) => {
         if (searchRef.current && !(searchRef.current as any).contains(event.target)) {
           setShowResults(false);
         }
@@ -709,12 +721,12 @@ const handleAddClaim = (claim : string) => {
       };
     }, []);
 
-    const handleSearchChange = (e : any) => {
+    const handleSearchChange = (e: any) => {
       setSearchTerm(e.target.value);
       setShowResults(true);
     };
 
-    const handleSelectResult = (persona : ParticipantSummaryResponse) => {
+    const handleSelectResult = (persona: ParticipantSummaryResponse) => {
       onSelect(persona.idNumber);
       setSearchTerm('');
       setShowResults(false);
@@ -739,7 +751,7 @@ const handleAddClaim = (claim : string) => {
           placeholder={placeholder}
           className="bg-[#2D3342] text-white w-full p-3 rounded-md border border-gray-500 hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors"
         />
-        
+
         {showResults && results.length > 0 && (
           <div className="absolute z-10 w-full mt-1 bg-[#2D3342] border border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto">
             {showingRecommendations && (
@@ -770,7 +782,7 @@ const handleAddClaim = (claim : string) => {
   };
 
   // Componente de búsqueda con autocompletado para peticiones predefinidas
-  const PredefinedClaimsAutocomplete = ({ onSelect } : {onSelect: any}) => {
+  const PredefinedClaimsAutocomplete = ({ onSelect }: { onSelect: any }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [results, setResults] = useState<string[]>([]);
     const [showResults, setShowResults] = useState(false);
@@ -796,13 +808,13 @@ const handleAddClaim = (claim : string) => {
       const filtered = predefinedClaims
         .filter(claim => claim.toLowerCase().includes(termLower))
         .slice(0, 5); // Máximo 5 resultados
-    
+
       setResults(filtered);
     }, [searchTerm, showResults]);
 
     // Manejar click fuera del componente para cerrar resultados
     useEffect(() => {
-      const handleClickOutside = (event : any) => {
+      const handleClickOutside = (event: any) => {
         if (searchRef.current && !(searchRef.current as any).contains(event.target)) {
           setShowResults(false);
         }
@@ -814,12 +826,12 @@ const handleAddClaim = (claim : string) => {
       };
     }, []);
 
-    const handleSearchChange = (e : any) => {
+    const handleSearchChange = (e: any) => {
       setSearchTerm(e.target.value);
       setShowResults(true);
     };
 
-    const handleSelectResult = (claim : string) => {
+    const handleSelectResult = (claim: string) => {
       onSelect(claim);
       setSearchTerm('');
       setShowResults(false);
@@ -844,7 +856,7 @@ const handleAddClaim = (claim : string) => {
           placeholder="Buscar petición predefinida..."
           className="bg-[#2D3342] text-white w-full p-3 rounded-md border border-gray-500 hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors"
         />
-        
+
         {showResults && results.length > 0 && (
           <div className="absolute z-10 w-full mt-1 bg-[#2D3342] border border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto">
             {showingAllOptions && (
@@ -874,7 +886,7 @@ const handleAddClaim = (claim : string) => {
   };
 
   // Componente para selector múltiple compacto (para la sección integrada)
-  const SelectorMultipleCompacto = ({ tipo, titulo, esOpcional = false } : {tipo: string, titulo: string, esOpcional?: boolean}) => {
+  const SelectorMultipleCompacto = ({ tipo, titulo, esOpcional = false }: { tipo: string, titulo: string, esOpcional?: boolean }) => {
     const personas = obtenerDatosPorTipo(tipo);
     const seleccionadas = personasSeleccionadas[tipo] || [];
 
@@ -887,7 +899,7 @@ const handleAddClaim = (claim : string) => {
               {seleccionadas.length > 0 && `(${seleccionadas.length})`}
             </span>
           </h4>
-          <button 
+          <button
             type="button"
             onClick={() => abrirOverlay(tipo)}
             className="bg-blue-500 hover:bg-blue-600 p-1.5 rounded-full transition-colors"
@@ -896,14 +908,14 @@ const handleAddClaim = (claim : string) => {
             <Plus size={16} className="text-white" />
           </button>
         </div>
-        
+
         <div className="space-y-3">
-          <AutocompleteSearch 
-            tipo={tipo} 
+          <AutocompleteSearch
+            tipo={tipo}
             placeholder={`Buscar por RUT o nombre...`}
-            onSelect={(rutPersona : string) => agregarPersonaSeleccionada(tipo, rutPersona)}
+            onSelect={(rutPersona: string) => agregarPersonaSeleccionada(tipo, rutPersona)}
           />
-          
+
           {seleccionadas.length > 0 ? (
             <div className="bg-gray-700/30 border border-gray-600 rounded-md p-3">
               <div className="flex flex-wrap gap-2">
@@ -914,7 +926,7 @@ const handleAddClaim = (claim : string) => {
                       <div>
                         <span className="text-white">{personaCompleta.idNumber + ' - ' + personaCompleta.fullName}</span>
                       </div>
-                      <button 
+                      <button
                         type="button"
                         onClick={() => eliminarPersonaSeleccionada(tipo, persona.rut)}
                         className="text-red-400 hover:text-red-300 transition-colors"
@@ -945,19 +957,18 @@ const handleAddClaim = (claim : string) => {
           <h2 className="text-4xl font-bold text-white mb-2">Nuevo caso</h2>
           <p className="text-gray-400">Complete el formulario para registrar un nuevo caso legal</p>
         </div>
-        
+
         <div className="bg-[#0F1625] rounded-xl p-8">
           <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
             {/* Tipo de procedimiento y materia legal */}
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               <div>
                 <label className="block mb-4 text-white font-medium">Título Caso</label>
-                <input 
+                <input
                   {...register('title' as any)}
                   placeholder=""
-                  className={`w-full bg-[#080d1a] text-white p-3 rounded-md border ${
-                    (errors as any).title ? 'border-red-500' : 'border-gray-500'
-                  } hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors resize-none`}
+                  className={`w-full bg-[#080d1a] text-white p-3 rounded-md border ${(errors as any).title ? 'border-red-500' : 'border-gray-500'
+                    } hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors resize-none`}
                 />
               </div>
             </div>
@@ -966,9 +977,8 @@ const handleAddClaim = (claim : string) => {
                 <label className="block mb-4 text-white font-medium">Tipo de procedimiento</label>
                 <select
                   {...register('proceedingType')}
-                  className={`w-full bg-[#2D3342] text-white p-3 rounded-md border ${
-                    errors.proceedingType ? 'border-red-500' : 'border-gray-500'
-                  } hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors`}
+                  className={`w-full bg-[#2D3342] text-white p-3 rounded-md border ${errors.proceedingType ? 'border-red-500' : 'border-gray-500'
+                    } hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors`}
                   disabled={isLoadingProceedingTypes}
                 >
                   <option value="">Seleccione una opción</option>
@@ -982,14 +992,13 @@ const handleAddClaim = (claim : string) => {
                   <p className="mt-1 text-sm text-red-500">{errors.proceedingType.message}</p>
                 )}
               </div>
-              
+
               <div>
                 <label className="block mb-4 text-white font-medium">Materia legal</label>
-                <select 
+                <select
                   {...register('legalMatter')}
-                  className={`w-full bg-[#2D3342] text-white p-3 rounded-md border ${
-                    errors.legalMatter ? 'border-red-500' : 'border-gray-500'
-                  } hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors`}
+                  className={`w-full bg-[#2D3342] text-white p-3 rounded-md border ${errors.legalMatter ? 'border-red-500' : 'border-gray-500'
+                    } hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors`}
                 >
                   <option value="">Seleccione una opción</option>
                   {legalMatters.map(matter => (
@@ -1003,11 +1012,11 @@ const handleAddClaim = (claim : string) => {
                 )}
               </div>
             </div>
-            
+
             {/* Sección integrada de participantes */}
             <div className="bg-gray-800/20 border border-gray-600 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-white mb-6">Participantes del caso</h3>
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Columna izquierda: Demandantes y Demandados */}
                 <div className="space-y-6">
@@ -1018,7 +1027,7 @@ const handleAddClaim = (claim : string) => {
                       <p className="mt-1 text-sm text-red-500">{errors.plaintiffIds.message}</p>
                     )}
                   </div>
-                  
+
                   {/* Demandados */}
                   <div>
                     <SelectorMultipleCompacto tipo="demandados" titulo="Demandados" />
@@ -1027,14 +1036,14 @@ const handleAddClaim = (claim : string) => {
                     )}
                   </div>
                 </div>
-                
+
                 {/* Columna derecha: Abogados y Representantes */}
                 <div className="space-y-6">
                   {/* Abogados */}
                   <div>
                     <SelectorMultipleCompacto tipo="abogados" titulo="Abogados Patrocinantes" esOpcional={true} />
                   </div>
-                  
+
                   {/* Representantes */}
                   <div>
                     <SelectorMultipleCompacto tipo="representantes" titulo="Representantes Legales" esOpcional={true} />
@@ -1046,11 +1055,10 @@ const handleAddClaim = (claim : string) => {
             {/* Tribunal */}
             <div className="bg-gray-800/20 border border-gray-600 rounded-lg p-6">
               <label className="block mb-4 text-white font-medium">Tribunal</label>
-              <select 
+              <select
                 {...register('institution')}
-                className={`w-full bg-[#2D3342] text-white p-3 rounded-md border ${
-                  errors.institution ? 'border-red-500' : 'border-gray-500'
-                } hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors`}
+                className={`w-full bg-[#2D3342] text-white p-3 rounded-md border ${errors.institution ? 'border-red-500' : 'border-gray-500'
+                  } hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors`}
               >
                 {institutions.map(inst => (
                   <option key={inst.value} value={inst.value}>
@@ -1062,7 +1070,7 @@ const handleAddClaim = (claim : string) => {
                 <p className="mt-1 text-sm text-red-500">{errors.institution.message}</p>
               )}
             </div>
-            
+
             {/* Peticiones al tribunal */}
             <div className="bg-gray-800/20 border border-gray-600 rounded-lg p-6">
               <label className="block mb-4 text-white font-medium">Peticiones al tribunal</label>
@@ -1107,7 +1115,7 @@ const handleAddClaim = (claim : string) => {
                     </button>
                   </div>
                 )}
-                
+
                 <div className="bg-gray-900/50 border border-gray-600 p-4 rounded-md min-h-[100px]">
                   {claimsList.length > 0 ? (
                     <ul className="space-y-2">
@@ -1132,23 +1140,22 @@ const handleAddClaim = (claim : string) => {
                 </div>
               </div>
             </div>
-            
+
             {/* Descripción del caso */}
             <div className="bg-gray-800/20 border border-gray-600 rounded-lg p-6">
               <label className="block mb-4 text-white font-medium">Descripción del caso</label>
-              <textarea 
+              <textarea
                 {...register('description')}
                 placeholder="Ingrese de forma detallada la descripción del caso"
                 rows={5}
-                className={`w-full bg-[#080d1a] text-white p-3 rounded-md border ${
-                  errors.description ? 'border-red-500' : 'border-gray-500'
-                } hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors resize-none`}
+                className={`w-full bg-[#080d1a] text-white p-3 rounded-md border ${errors.description ? 'border-red-500' : 'border-gray-500'
+                  } hover:border-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-colors resize-none`}
               />
               {errors.description && (
                 <p className="mt-1 text-sm text-red-500">{errors.description.message}</p>
               )}
             </div>
-            
+
             {/* Botón de acción */}
             <div className="flex justify-end mt-6">
               <button
@@ -1167,11 +1174,11 @@ const handleAddClaim = (claim : string) => {
       {/* Overlay lateral */}
       {overlayAbierto && (
         <div className="fixed inset-0 z-50">
-          <div 
+          <div
             className="absolute inset-0 bg-black bg-opacity-50"
             onClick={cerrarOverlay}
           ></div>
-          
+
           <div className="absolute right-0 top-0 h-full w-96 bg-gray-800 shadow-xl">
             <div className="p-6 h-full flex flex-col">
               <div className="flex justify-between items-center mb-6">
@@ -1179,7 +1186,7 @@ const handleAddClaim = (claim : string) => {
                   <User size={24} />
                   {obtenerTitulo()}
                 </h2>
-                <button 
+                <button
                   onClick={cerrarOverlay}
                   className="text-gray-400 hover:text-white"
                 >
@@ -1203,15 +1210,14 @@ const handleAddClaim = (claim : string) => {
                           e.preventDefault();
                         }
                       }}
-                      className={`bg-[#2D3342] text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 ${
-                        erroresValidacion.rut ? 'border-2 border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
-                      }`}
+                      className={`bg-[#2D3342] text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 ${erroresValidacion.rut ? 'border-2 border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
+                        }`}
                     />
                     {erroresValidacion.rut && (
                       <p className="text-red-400 text-sm mt-1">{erroresValidacion.rut}</p>
                     )}
                   </div>
-                  
+
                   <div>
                     <input
                       type="text"
@@ -1223,39 +1229,36 @@ const handleAddClaim = (claim : string) => {
                           e.preventDefault();
                         }
                       }}
-                      className={`bg-[#2D3342] text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 ${
-                        erroresValidacion.nombre ? 'border-2 border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
-                      }`}
+                      className={`bg-[#2D3342] text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 ${erroresValidacion.nombre ? 'border-2 border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
+                        }`}
                     />
                     {erroresValidacion.nombre && (
                       <p className="text-red-400 text-sm mt-1">{erroresValidacion.nombre}</p>
                     )}
                     <p className="text-gray-400 text-xs mt-1">{formData.nombre.length}/100 caracteres</p>
                   </div>
-                  
+
                   <div>
                     <input
                       type="text"
                       placeholder="Dirección"
                       value={formData.direccion}
                       onChange={(e) => manejarCambioDireccion(e.target.value)}
-                      className={`bg-[#2D3342] text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 ${
-                        erroresValidacion.direccion ? 'border-2 border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
-                      }`}
+                      className={`bg-[#2D3342] text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 ${erroresValidacion.direccion ? 'border-2 border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
+                        }`}
                     />
                     {erroresValidacion.direccion && (
                       <p className="text-red-400 text-sm mt-1">{erroresValidacion.direccion}</p>
                     )}
                     <p className="text-gray-400 text-xs mt-1">{formData.direccion.length}/255 caracteres</p>
                   </div>
-                  
-                  <button 
+
+                  <button
                     onClick={editandoIndice >= 0 ? guardarEdicion : agregarPersona}
-                    className={`w-full p-3 rounded-md flex items-center justify-center gap-2 ${
-                      formularioEsValido() 
-                        ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                    className={`w-full p-3 rounded-md flex items-center justify-center gap-2 ${formularioEsValido()
+                        ? 'bg-blue-500 hover:bg-blue-600 text-white'
                         : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    }`}
+                      }`}
                     disabled={!formularioEsValido()}
                   >
                     <Save size={18} />
@@ -1273,13 +1276,13 @@ const handleAddClaim = (claim : string) => {
                       <div className="text-sm text-gray-300">{persona.idNumber}</div>
                       <div className="text-sm text-gray-400">{"Poner direccion"}</div>
                       <div className="flex gap-2 mt-2">
-                        <button 
+                        <button
                           onClick={() => editarPersona(idx)}
                           className="text-blue-400 hover:text-blue-300"
                         >
                           <Edit size={16} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => eliminarPersona(idx)}
                           className="text-red-400 hover:text-red-300"
                         >
