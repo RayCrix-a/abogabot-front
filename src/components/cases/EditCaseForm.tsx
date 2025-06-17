@@ -11,7 +11,8 @@ import { useParticipants } from '@/hooks/useParticipants';
 import { useProceedingTypes } from '@/hooks/useProceedingTypes';
 import { useSubjectMatters } from '@/hooks/useSubjectMatters';
 import { LawsuitDetailResponse, LawsuitRequest, ParticipantSummaryResponse } from '@/generated/api/data-contracts';
-import { Persona, PersonaSummary } from './CaseForm';
+import { LawsuitFormSchema, Persona, PersonaSummary } from './CaseForm';
+
 
 // Esquema de validación actualizado para múltiples participantes
 const editCaseSchema = z.object({
@@ -81,7 +82,7 @@ const EditCaseForm = ({ caseData, onCancel } : EditCaseFormProps) => {
   const { subjectMatterOptions, isLoading: isLoadingSubjectMatters } = useSubjectMatters();
   
   // Preparar valores iniciales
-  const getInitialValues = () => {
+  const getInitialValues = () : LawsuitFormSchema => {
     return {
       title: caseData.title || '',
       proceedingType:  caseData.proceedingType || '',
@@ -96,7 +97,7 @@ const EditCaseForm = ({ caseData, onCancel } : EditCaseFormProps) => {
     };
   };
   
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm({
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<LawsuitFormSchema>({
     resolver: zodResolver(editCaseSchema),
     defaultValues: getInitialValues()
   });
@@ -558,7 +559,7 @@ const EditCaseForm = ({ caseData, onCancel } : EditCaseFormProps) => {
   };
 
   // Función principal para enviar el formulario actualizado
-  const onSubmit = async (data : LawsuitRequest) => {
+  const onSubmit = async (data : LawsuitFormSchema) => {
     if (!caseData?.id) {
       toast.error('Error: No se puede actualizar el caso sin ID');
       return;
@@ -589,7 +590,7 @@ const EditCaseForm = ({ caseData, onCancel } : EditCaseFormProps) => {
       const lawsuitRequest : LawsuitRequest = {
         title: data.title,
         proceedingType: data.proceedingType,
-        subjectMatter: data.subjectMatter,
+        subjectMatter: data.legalMatter,
         status: caseData.status, // Mantener el status actual
         plaintiffs: plaintiffRuts,
         defendants: defendantRuts,
@@ -597,7 +598,7 @@ const EditCaseForm = ({ caseData, onCancel } : EditCaseFormProps) => {
         representative: representativeRuts.length > 0 ? representativeRuts[0] : undefined,
         claims: claimsList,
         institution: data.institution,
-        narrative: data.narrative
+        narrative: data.description
       };
       
       // Llamada a la API

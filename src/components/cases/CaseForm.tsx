@@ -21,7 +21,7 @@ export interface Persona extends PersonaSummary {
   direccion: string
 }
 
-interface FormSchema {
+export interface LawsuitFormSchema {
   title: string,
   proceedingType: string,
   legalMatter: string,
@@ -97,7 +97,7 @@ const CaseForm = () => {
   } = useParticipants();
   const { proceedingTypeOptions, isLoading: isLoadingProceedingTypes } = useProceedingTypes();
 
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<FormSchema>({
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<LawsuitFormSchema>({
     resolver: zodResolver(caseSchema),
     defaultValues: {
       proceedingType: '',
@@ -520,7 +520,7 @@ const CaseForm = () => {
 
   // En CaseForm.jsx, reemplazar completamente la función onSubmit:
 
-  const onSubmit = async (data: FormSchema) => {
+  const onSubmit = async (data: LawsuitFormSchema) => {
     console.log('🚀 onSubmit ejecutado con data:', data);
     console.log('🚀 personasSeleccionadas:', personasSeleccionadas);
     console.log('🚀 claimsList:', claimsList);
