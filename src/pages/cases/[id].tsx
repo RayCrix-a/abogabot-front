@@ -261,7 +261,14 @@ export const CaseDetail = () => {
                 onGenerateDocument={handleGenerateDocument}
               />
             ) : (
-              <ChatBox caseId={Number(id)} />
+              <ChatBox 
+                caseId={id} 
+                onMessageSent={(message) => {
+                  console.log('Message sent:', message);
+                  // Handle message sending logic here
+                }}
+                chatTitle={lawsuit.title || lawsuit.subjectMatter || 'Chat de consulta'}
+              />
             )}
           </div>
         </>
