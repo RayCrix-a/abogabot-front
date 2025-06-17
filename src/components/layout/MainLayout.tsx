@@ -1,11 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
+import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
 import { withAuthenticationRequired } from '@auth0/auth0-react'
 
-const MainLayout = ({ children, title, description } : {children: any, title: string, description: string}) => {
+interface MainLayoutProps {
+  children: ReactNode;
+  title?: string;
+  description?: string;
+}
+
+const MainLayout = ({ children, title, description }: MainLayoutProps) => {
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -18,16 +26,34 @@ const MainLayout = ({ children, title, description } : {children: any, title: st
     }
   }, []);
 
+  // Efecto para manejar el comportamiento del sidebar en la página de chat
+  useEffect(() => {
+    if (router.pathname === '/chat') {
+      // En la página de chat, inicializar con sidebar cerrado pero PERMITIR que se abra
+      if (isSidebarOpen) {
+        setIsSidebarOpen(false);
+      }
+    }
+  }, [router.pathname]); // Removido isSidebarOpen de las dependencias
+
   // Función para alternar el estado del sidebar
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    const newState = !isSidebarOpen;
+    setIsSidebarOpen(newState);
+    
+    // Emitir evento personalizado para que otros componentes puedan escuchar
+    window.dispatchEvent(new CustomEvent('sidebarToggle', { 
+      detail: { isOpen: newState } 
+    }));
   };
 
-
-  // No renderizan la interfaz hasta que estemos en el cliente
+  // No renderizar la interfaz hasta que estemos en el cliente
   if (!isMounted) {
     return null;
   }
+
+  // Determinar si estamos en una página que necesita layout especial
+  const isSpecialLayout = router.pathname === '/chat';
 
   return (
     <>
@@ -44,17 +70,19 @@ const MainLayout = ({ children, title, description } : {children: any, title: st
         <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
 
         {/* Contenido principal */}
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 overflow-hidden transition-all duration-300">
           {/* Navbar superior */}
           <Navbar toggleSidebar={toggleSidebar} />
 
           {/* Contenido */}
-          <main className="flex-1 overflow-y-auto bg-dark-lighter p-4">
-            {children}
+          <main className={`flex-1 overflow-y-auto bg-dark-lighter ${isSpecialLayout ? 'p-0' : 'p-4'}`}>
+            <div className={isSpecialLayout ? 'h-full p-4' : ''}>
+              {children}
+            </div>
           </main>
 
-          {/* Footer */}
-          <Footer />
+          {/* Footer - ocultarlo en páginas especiales para maximizar espacio */}
+          {!isSpecialLayout && <Footer />}
         </div>
       </div>
     </>
