@@ -18,12 +18,12 @@ export const useProceedingTypes = () => {
     queryFn: async () => {
       try {
         const accessToken = await getAccessTokenSilently();
-        const response = await proceedingTypeResource.getAllProceedingTypes({
+        const response = await proceedingTypeResource.getAllProceedingTypes({page: undefined, recordsPerPage: undefined}, {
         headers: {
             Authorization: `Bearer ${accessToken}`,
         }
     });
-        return response.data;
+        return response.data.results;
       } catch (error) {
         console.error('Error al obtener tipos de procedimiento:', error);
         toast.error('Error al cargar los tipos de procedimiento');

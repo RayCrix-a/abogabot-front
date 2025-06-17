@@ -3,7 +3,7 @@ import { lawsuitResource } from '@/lib/apiClient';
 import { toast } from 'react-toastify';
 import { useState, useCallback } from 'react';
 import { useAuth0 } from '@auth0/auth0-react'
-import { LawsuitRequest, LawsuitStatus, LawsuitSummaryResponse } from '@/generated/api/data-contracts';
+import { LawsuitRequest, LawsuitStatus, LawsuitSummaryResponse, TaskSummaryResponse } from '@/generated/api/data-contracts';
 
 /**
  * Hook para gestionar demandas legales
@@ -21,14 +21,18 @@ export const useLawsuits = () => {
     refetch: refetchLawsuits
   } = useQuery({
     queryKey: ['lawsuits'],
-    queryFn: async () => {
+    queryFn: async () : Promise<LawsuitSummaryResponse[]> => {
       const accessToken = await getAccessTokenSilently();
       const response = await lawsuitResource.getAllLawsuits({
+        page: undefined,
+        recordsPerPage: undefined
+
+      },{
         headers: {
             Authorization: `Bearer ${accessToken}`,
         }
     });
-      return response.data;
+      return response.data.results;
     }
   });
 
@@ -168,15 +172,18 @@ const createLawsuitMutation = useMutation({
   const useLawsuitRevisions = (id : number) => {
     return useQuery({
       queryKey: ['lawsuit-revisions', id],
-      queryFn: async () => {
+      queryFn: async () : Promise<TaskSummaryResponse[]> => {
         if (!id) return [];
         const accessToken = await getAccessTokenSilently();
         const response = await lawsuitResource.getRevisions(id, {
+          page: undefined,
+          recordsPerPage: undefined
+        }, {
         headers: {
             Authorization: `Bearer ${accessToken}`,
         }
     });
-        return response.data;
+        return response.data.results;
       },
       enabled: !!id
     });
@@ -190,16 +197,16 @@ const createLawsuitMutation = useMutation({
   const useLawsuitLastRevisions = (id : number) => {
     return useQuery({
       queryKey: ['lawsuit-last-revisions', id],
-      queryFn: async () => {
+      queryFn: async () : Promise<string | null> => {
         if (!id) return null;
         try {
           const accessToken = await getAccessTokenSilently();
-          const response = await lawsuitResource.getRevisions(id, {
+          const response = await lawsuitResource.getRevisions(id, {page: undefined, recordsPerPage: undefined}, {
         headers: {
             Authorization: `Bearer ${accessToken}`,
         }
     });
-          const innerResponse = response.data;
+          const innerResponse = response.data.results;
           if (!innerResponse || innerResponse.length === 0) return null;
           const lastRevision = innerResponse.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
           const responseRevision = await lawsuitResource.getRevisionResponse(id, lastRevision.uuid, {

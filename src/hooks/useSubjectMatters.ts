@@ -18,12 +18,12 @@ export const useSubjectMatters = () => {
     queryFn: async () => {
       try {
         const accessToken = await getAccessTokenSilently();
-        const response = await subjectMatterResource.getAllSubjectMatters({
+        const response = await subjectMatterResource.getAllSubjectMatters({page: undefined, recordsPerPage: undefined},{
         headers: {
             Authorization: `Bearer ${accessToken}`,
         }
     });
-        return response.data;
+        return response.data.results;
       } catch (error) {
         console.error('Error al obtener materias legales:', error);
         toast.error('Error al cargar las materias legales');

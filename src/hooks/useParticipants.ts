@@ -7,8 +7,7 @@ import {
 } from '@/lib/apiClient';
 import { toast } from 'react-toastify';
 import { useAuth0 } from '@auth0/auth0-react'
-import { ParticipantRequest } from '@/generated/api/data-contracts';
-
+import { ParticipantRequest, ParticipantSummaryResponse } from '@/generated/api/data-contracts';
 
 export const useParticipants = () => {
   const { user, getAccessTokenSilently } = useAuth0();
@@ -20,15 +19,15 @@ export const useParticipants = () => {
     isLoading: isLoadingPlaintiffs 
   } = useQuery({
     queryKey: ['plaintiffs'],
-    queryFn: async () => {
+    queryFn: async () : Promise<ParticipantSummaryResponse[]> => {
       // Primero obtenemos la lista básica
       const accessToken = await getAccessTokenSilently();
-      const response = await plaintiffResource.getAllPlaintiffs({
+      const response = await plaintiffResource.getAllPlaintiffs({page: undefined, recordsPerPage: undefined},{
         headers: {
             Authorization: `Bearer ${accessToken}`,
         }
     });
-      const basicList = response.data;
+      const basicList = response.data.results;
       
       // Luego obtenemos los datos completos de cada demandante
       const detailedPromises = basicList.map(async (plaintiff) => {
@@ -56,15 +55,15 @@ export const useParticipants = () => {
     isLoading: isLoadingDefendants 
   } = useQuery({
     queryKey: ['defendants'],
-    queryFn: async () => {
+    queryFn: async () : Promise<ParticipantSummaryResponse[]> => {
       // Primero obtenemos la lista básica
       const accessToken = await getAccessTokenSilently();
-      const response = await defendantResource.getAllDefendants({
+      const response = await defendantResource.getAllDefendants({page: undefined, recordsPerPage: undefined},{
         headers: {
             Authorization: `Bearer ${accessToken}`,
         }
     });
-      const basicList = response.data;
+      const basicList = response.data.results;
       
       // Luego obtenemos los datos completos de cada demandado
       const detailedPromises = basicList.map(async (defendant) => {
@@ -92,15 +91,15 @@ export const useParticipants = () => {
     isLoading: isLoadingLawyers 
   } = useQuery({
     queryKey: ['lawyers'],
-    queryFn: async () => {
+    queryFn: async () : Promise<ParticipantSummaryResponse[]> => {
       // Primero obtenemos la lista básica
       const accessToken = await getAccessTokenSilently();
-      const response = await lawyerResource.getAllLawyers({
+      const response = await lawyerResource.getAllLawyers({page: undefined, recordsPerPage: undefined}, {
         headers: {
             Authorization: `Bearer ${accessToken}`,
         }
     });
-      const basicList = response.data;
+      const basicList = response.data.results;
       
       // Luego obtenemos los datos completos de cada abogado
       const detailedPromises = basicList.map(async (lawyer) => {
@@ -128,15 +127,15 @@ export const useParticipants = () => {
     isLoading: isLoadingRepresentatives 
   } = useQuery({
     queryKey: ['representatives'],
-    queryFn: async () => {
+    queryFn: async () : Promise<ParticipantSummaryResponse[]> => {
       // Primero obtenemos la lista básica
       const accessToken = await getAccessTokenSilently();
-      const response = await representativeResource.getAllRepresentatives({
+      const response = await representativeResource.getAllRepresentatives({page: undefined, recordsPerPage: undefined},{
         headers: {
             Authorization: `Bearer ${accessToken}`,
         }
     });
-      const basicList = response.data;
+      const basicList = response.data.results;
       
       // Luego obtenemos los datos completos de cada representante
       const detailedPromises = basicList.map(async (representative) => {
