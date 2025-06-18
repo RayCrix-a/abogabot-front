@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
 import { FiMessageCircle } from 'react-icons/fi';
 import MainLayout from '@/components/layout/MainLayout';
 import ChatBox from '@/components/chat/ChatBox';
 import ChatLayout from '@/components/layout/ChatLayout';
 import { useChatLegal } from '@/hooks/useChats';
 import { useAuth0, withAuthenticationRequired } from '@auth0/auth0-react';
+import { toast } from 'react-toastify';
 
 const ChatLegalPage = () => {
   const { user } = useAuth0();
-  const router = useRouter();
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
   
-  // Usar el hook personalizado para manejar el estado del chat
+  // Usar el hook personalizado para manejar el estado del chat con API real
   const {
     currentChatId,
     chatHistory,
@@ -21,10 +20,10 @@ const ChatLegalPage = () => {
     startNewChat,
     selectChat,
     deleteChat,
-    updateChatLastMessage,
     hasActiveChat,
-    currentChat,
-    clearError
+    getCurrentChatTitle,
+    clearError,
+    chatCount
   } = useChatLegal();
 
   // Detectar el estado del sidebar desde localStorage Y permitir cambios
@@ -53,13 +52,12 @@ const ChatLegalPage = () => {
 
     window.addEventListener('sidebarToggle', handleSidebarToggle as EventListener);
 
-    // NUEVO: Escuchar clicks en el botón hamburguesa
+    // Escuchar clicks en el botón hamburguesa
     const handleToggleFromNavbar = () => {
       const currentState = localStorage.getItem('sidebarOpen') === 'true';
       setLeftSidebarOpen(!currentState);
     };
 
-    // Crear un event listener personalizado para el navbar
     window.addEventListener('toggleSidebar', handleToggleFromNavbar);
 
     return () => {
@@ -69,43 +67,81 @@ const ChatLegalPage = () => {
     };
   }, []);
 
-  // Manejar errores
+  // Manejar errores de la API
   useEffect(() => {
     if (error) {
       console.error('Chat Legal Error:', error);
-      // El hook ya maneja los toast, pero podríamos agregar lógica adicional aquí
+      toast.error(error);
+      // Limpiar error después de mostrarlo
+      setTimeout(() => {
+        clearError();
+      }, 5000);
     }
-  }, [error]);
+  }, [error, clearError]);
+
+  // Función para manejar el inicio de nuevo chat
+  const handleStartNewChat = async (): Promise<string | null> => {
+    try {
+      const newChatId = await startNewChat();
+      return newChatId;
+    } catch (error) {
+      console.error('Error al iniciar nuevo chat:', error);
+      toast.error('Error al iniciar nueva conversación');
+      return null;
+    }
+  };
+
+  // Función para manejar la selección de chat
+  const handleSelectChat = (chatId: string) => {
+    try {
+      selectChat(chatId);
+    } catch (error) {
+      console.error('Error al seleccionar chat:', error);
+      toast.error('Error al cargar la conversación');
+    }
+  };
+
+  // Función para manejar la eliminación de chat
+  const handleDeleteChat = async (chatId: string): Promise<void> => {
+    try {
+      await deleteChat(chatId);
+    } catch (error) {
+      console.error('Error al eliminar chat:', error);
+      toast.error('Error al eliminar la conversación');
+    }
+  };
 
   // Función para manejar cuando se envía un mensaje
   const handleMessageSent = (message: string) => {
-    if (currentChatId && message) {
-      updateChatLastMessage(currentChatId, message);
-    }
+    // El hook se encarga de toda la lógica de mensajes
+    // Aquí podríamos agregar lógica adicional si fuera necesario
   };
 
   // Renderizado del contenido principal del chat
   const renderChatContent = () => {
-    if (isLoading) {
+    if (isLoading && chatHistory.length === 0) {
       return (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
-            <p className="text-gray-400">Cargando chat...</p>
+            <p className="text-gray-400">Cargando chat legal...</p>
           </div>
         </div>
       );
     }
 
-    if (hasActiveChat) {
-      return (
-        <ChatBox 
-          caseId={currentChatId || ''} 
-          onMessageSent={handleMessageSent}
-          chatTitle={currentChat?.title || 'Chat Legal'}
-        />
-      );
-    }
+    return (
+      <ChatBox 
+        onMessageSent={handleMessageSent}
+        chatTitle={getCurrentChatTitle()}
+        currentChatId={currentChatId}
+      />
+    );
+  };
+
+  // Renderizado del contenido de bienvenida cuando no hay chat activo
+  const renderWelcomeContent = () => {
+    if (hasActiveChat) return null;
 
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -116,11 +152,14 @@ const ChatLegalPage = () => {
           <h2 className="text-xl font-semibold text-white mb-2">
             Bienvenido al Chat Legal
           </h2>
-          <p className="text-gray-400 mb-6 max-w-md">
-            Inicia una nueva conversación para consultar con AbogaBot sobre temas legales.
+          <p className="text-gray-400 mb-2 max-w-md">
+            ¡Hola {user?.name || 'Usuario'}! Inicia una nueva conversación para consultar con AbogaBot sobre temas legales.
+          </p>
+          <p className="text-gray-500 text-sm mb-6">
+            {chatCount > 0 && `Tienes ${chatCount} conversación${chatCount === 1 ? '' : 'es'} en tu historial.`}
           </p>
           <button
-            onClick={startNewChat}
+            onClick={handleStartNewChat}
             disabled={isLoading}
             className="btn-primary flex items-center gap-2 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -137,12 +176,21 @@ const ChatLegalPage = () => {
       <ChatLayout
         currentChatId={currentChatId}
         chatHistory={chatHistory as any}
-        onStartNewChat={startNewChat}
-        onSelectChat={selectChat}
-        onDeleteChat={deleteChat}
+        onStartNewChat={handleStartNewChat}
+        onSelectChat={handleSelectChat}
+        onDeleteChat={handleDeleteChat}
         leftSidebarOpen={leftSidebarOpen}
+        isLoading={isLoading}
       >
-        {renderChatContent()}
+        {/* Mostrar contenido de bienvenida o chat activo */}
+        {hasActiveChat || (currentChatId === 'new-chat') ? renderChatContent() : renderWelcomeContent()}
+        
+        {/* Indicador de estado global */}
+        {error && (
+          <div className="fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded-md shadow-lg">
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
       </ChatLayout>
     </MainLayout>
   );

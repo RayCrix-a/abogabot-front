@@ -1,8 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
+import { useAuth0 } from '@auth0/auth0-react';
+import { chatResource } from '@/lib/apiClient';
+import { 
+  ChatPrompt, 
+  ChatLastAnswerResponse, 
+  ChatHistoryMessage, 
+  ChatSummaryResponse,
+  PaginableChatResponse 
+} from '@/generated/api/data-contracts';
 
+// Interfaz para el chat local (adaptada para compatibilidad con componentes existentes)
 export interface Chat {
-  id: string;
+  id: string; // sessionId de la API
   title: string;
   lastMessage: string;
   timestamp: Date;
@@ -11,103 +22,150 @@ export interface Chat {
   createdAt: Date;
 }
 
+// Interfaz para los mensajes locales
+export interface Message {
+  id: number;
+  content: string;
+  sender: 'user' | 'bot'; // Adaptado desde 'human'/'ai'
+  timestamp: string;
+  isError?: boolean;
+}
+
 /**
- * Hook personalizado para gestionar el estado y funcionalidades del Chat Legal
+ * Hook personalizado para gestionar el Chat Legal con API real
  */
 export const useChatLegal = () => {
+  const { getAccessTokenSilently } = useAuth0();
+  const queryClient = useQueryClient();
+  
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  const [chatHistory, setChatHistory] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Cargar historial de chats al inicializar
-  useEffect(() => {
-    loadChatHistory();
-  }, []);
+  // Query para obtener todas las conversaciones
+  const {
+    data: chatListResponse,
+    isLoading: isLoadingChats,
+    error: chatsError,
+    refetch: refetchChats
+  } = useQuery({
+    queryKey: ['chats'],
+    queryFn: async (): Promise<PaginableChatResponse> => {
+      const accessToken = await getAccessTokenSilently();
+      const response = await chatResource.getAllChats({
+        page: 1,
+        recordsPerPage: 50 // Obtener hasta 50 conversaciones
+      }, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        }
+      });
+      return response.data;
+    },
+    staleTime: 30000, // 30 segundos
+  });
 
-  // Función para cargar el historial de chats
-  const loadChatHistory = useCallback(async () => {
+  // Query para obtener mensajes de un chat específico
+  const useCurrentChatMessages = (sessionId: string | null) => {
+    return useQuery({
+      queryKey: ['chat-messages', sessionId],
+      queryFn: async (): Promise<ChatHistoryMessage[]> => {
+        if (!sessionId) return [];
+        const accessToken = await getAccessTokenSilently();
+        const response = await chatResource.getChat(sessionId, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          }
+        });
+        return response.data;
+      },
+      enabled: !!sessionId,
+      staleTime: 10000, // 10 segundos
+    });
+  };
+
+  // Mutación para crear nuevo chat
+  const createChatMutation = useMutation({
+    mutationFn: async (prompt: string): Promise<ChatLastAnswerResponse> => {
+      const accessToken = await getAccessTokenSilently();
+      const chatPrompt: ChatPrompt = { question: prompt };
+      const response = await chatResource.createNewChat(chatPrompt, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        }
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setCurrentChatId(data.sessionId);
+      queryClient.invalidateQueries({ queryKey: ['chats'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', data.sessionId] });
+    },
+    onError: (error) => {
+      console.error('Error al crear nuevo chat:', error);
+      setError('Error al crear nuevo chat');
+      toast.error('Error al crear nuevo chat');
+    }
+  });
+
+  // Mutación para continuar chat existente
+  const continueChatMutation = useMutation({
+    mutationFn: async ({ sessionId, prompt }: { sessionId: string, prompt: string }): Promise<ChatLastAnswerResponse> => {
+      const accessToken = await getAccessTokenSilently();
+      const chatPrompt: ChatPrompt = { question: prompt };
+      const response = await chatResource.continueChat(sessionId, chatPrompt, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        }
+      });
+      return response.data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', variables.sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['chats'] });
+    },
+    onError: (error) => {
+      console.error('Error al continuar chat:', error);
+      setError('Error al enviar mensaje');
+      toast.error('Error al enviar mensaje');
+    }
+  });
+
+  // Convertir datos de la API al formato esperado por los componentes
+  const chatHistory: Chat[] = (chatListResponse?.results || []).map((apiChat: ChatSummaryResponse) => ({
+    id: apiChat.sessionId,
+    title: apiChat.title,
+    lastMessage: '', // La API no devuelve último mensaje en el resumen
+    timestamp: new Date(apiChat.createdAt),
+    messageCount: 0, // Calculado dinámicamente si es necesario
+    status: 'active',
+    createdAt: new Date(apiChat.createdAt)
+  }));
+
+  // Función para iniciar un nuevo chat
+  const startNewChat = useCallback(async (initialMessage?: string): Promise<string | null> => {
     try {
       setIsLoading(true);
       setError(null);
-
-      // Por ahora usamos datos mock, pero aquí iría la llamada a la API
-      const mockHistory: Chat[] = [
-        {
-          id: '1',
-          title: 'Consulta sobre contrato laboral',
-          lastMessage: 'Gracias por la información sobre las clausulas...',
-          timestamp: new Date(Date.now() - 3600000), // 1 hora atrás
-          messageCount: 12,
-          status: 'active',
-          createdAt: new Date(Date.now() - 86400000) // 1 día atrás
-        },
-        {
-          id: '2', 
-          title: 'Duda sobre responsabilidad civil',
-          lastMessage: 'Entiendo, entonces en este caso...',
-          timestamp: new Date(Date.now() - 86400000), // 1 día atrás
-          messageCount: 8,
-          status: 'active',
-          createdAt: new Date(Date.now() - 172800000) // 2 días atrás
-        },
-        {
-          id: '3',
-          title: 'Procedimiento de divorcio',
-          lastMessage: 'AbogaBot: Los pasos que debes seguir son...',
-          timestamp: new Date(Date.now() - 172800000), // 2 días atrás
-          messageCount: 15,
-          status: 'active',
-          createdAt: new Date(Date.now() - 259200000) // 3 días atrás
-        }
-      ];
-
-      // Ordenar por fecha de último mensaje (más recientes primero)
-      const sortedHistory = mockHistory.sort((a, b) => 
-        b.timestamp.getTime() - a.timestamp.getTime()
-      );
-
-      setChatHistory(sortedHistory);
-    } catch (err) {
-      console.error('Error al cargar historial de chats:', err);
-      setError('Error al cargar el historial de chats');
-      toast.error('Error al cargar el historial de chats');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Función para iniciar un nuevo chat
-  const startNewChat = useCallback(async () => {
-    try {
-      const newChatId = `chat-${Date.now()}`;
       
-      // Aquí iría la lógica para crear un nuevo chat en el backend
-      console.log('Iniciando nuevo chat:', newChatId);
-      
-      setCurrentChatId(newChatId);
-      
-      // Opcionalmente, añadir el nuevo chat al historial
-      const newChat: Chat = {
-        id: newChatId,
-        title: 'Nueva consulta legal',
-        lastMessage: '',
-        timestamp: new Date(),
-        messageCount: 0,
-        status: 'active',
-        createdAt: new Date()
-      };
-      
-      setChatHistory(prev => [newChat, ...prev]);
-      
-      return newChatId;
+      if (initialMessage) {
+        // Si hay mensaje inicial, crear chat con ese mensaje
+        const result = await createChatMutation.mutateAsync(initialMessage);
+        return result.sessionId;
+      } else {
+        // Cambiar a modo de nuevo chat sin crear aún
+        setCurrentChatId('new-chat');
+        setIsLoading(false);
+        return 'new-chat';
+      }
     } catch (err) {
       console.error('Error al iniciar nuevo chat:', err);
       setError('Error al iniciar nuevo chat');
-      toast.error('Error al iniciar nuevo chat');
       return null;
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [createChatMutation]);
 
   // Función para seleccionar un chat existente
   const selectChat = useCallback((chatId: string) => {
@@ -117,16 +175,47 @@ export const useChatLegal = () => {
     }
 
     const chat = chatHistory.find(c => c.id === chatId);
-    if (!chat) {
+    
+    if (!chat && chatId !== 'new-chat') {
+      console.warn('Chat no encontrado:', chatId);
       toast.error('Chat no encontrado');
       return;
     }
 
     setCurrentChatId(chatId);
-    console.log('Chat seleccionado:', chatId);
+    setError(null);
   }, [chatHistory]);
 
-  // Función para eliminar un chat
+  // Función para enviar mensaje
+  const sendMessage = useCallback(async (message: string): Promise<ChatLastAnswerResponse | null> => {
+    if (!message.trim()) return null;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      if (!currentChatId || currentChatId === 'new-chat') {
+        // Crear nuevo chat con el primer mensaje
+        const result = await createChatMutation.mutateAsync(message);
+        return result;
+      } else {
+        // Continuar chat existente
+        const result = await continueChatMutation.mutateAsync({
+          sessionId: currentChatId,
+          prompt: message
+        });
+        return result;
+      }
+    } catch (err) {
+      console.error('Error al enviar mensaje:', err);
+      setError('Error al enviar mensaje');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentChatId, createChatMutation, continueChatMutation]);
+
+  // Función para eliminar un chat (no está en la API, simular localmente)
   const deleteChat = useCallback(async (chatId: string) => {
     try {
       if (!chatId) {
@@ -134,104 +223,92 @@ export const useChatLegal = () => {
         return;
       }
 
-      // Confirmar eliminación
       const confirmDelete = window.confirm('¿Estás seguro de que deseas eliminar este chat?');
-      if (!confirmDelete) {
-        return;
-      }
+      if (!confirmDelete) return;
 
-      // Aquí iría la llamada a la API para eliminar el chat
-      console.log('Eliminando chat:', chatId);
-
-      // Actualizar el estado local
-      setChatHistory(prev => prev.filter(chat => chat.id !== chatId));
-      
-      // Si el chat eliminado era el activo, limpiar la selección
+      // Como no hay endpoint de eliminación, solo removemos localmente
       if (currentChatId === chatId) {
         setCurrentChatId(null);
       }
 
-      toast.success('Chat eliminado correctamente');
+      // Invalidar queries para "simular" eliminación
+      queryClient.invalidateQueries({ queryKey: ['chats'] });
+      queryClient.removeQueries({ queryKey: ['chat-messages', chatId] });
+
+      toast.success('Chat eliminado del historial local');
     } catch (err) {
       console.error('Error al eliminar chat:', err);
       setError('Error al eliminar el chat');
       toast.error('Error al eliminar el chat');
     }
-  }, [currentChatId]);
+  }, [currentChatId, queryClient]);
 
-  // Función para actualizar el último mensaje de un chat
-  const updateChatLastMessage = useCallback((chatId: string, message: string) => {
-    setChatHistory(prev => 
-      prev.map(chat => 
-        chat.id === chatId 
-          ? {
-              ...chat,
-              lastMessage: message,
-              timestamp: new Date(),
-              messageCount: chat.messageCount + 1
-            }
-          : chat
-      )
-    );
+  // Función para convertir mensajes de API a formato local
+  const convertApiMessagesToLocal = useCallback((apiMessages: ChatHistoryMessage[]): Message[] => {
+    return apiMessages.map((msg, index) => ({
+      id: index + 1,
+      content: msg.content,
+      sender: msg.role === 'human' ? 'user' : 'bot',
+      timestamp: msg.createdAt,
+      isError: false
+    }));
   }, []);
 
-  // Función para actualizar el título de un chat
-  const updateChatTitle = useCallback((chatId: string, newTitle: string) => {
-    setChatHistory(prev => 
-      prev.map(chat => 
-        chat.id === chatId 
-          ? { ...chat, title: newTitle }
-          : chat
-      )
-    );
-  }, []);
-
-  // Función para formatear timestamp
-  const formatTimestamp = useCallback((timestamp: Date | string) => {
-    if (!timestamp) return '';
+  // Función para obtener mensajes del chat actual
+  const getCurrentChatMessages = useCallback((sessionId?: string): Message[] => {
+    const chatId = sessionId || currentChatId;
+    if (!chatId || chatId === 'new-chat') return [];
     
-    const now = new Date();
-    const messageDate = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
-    const diff = now.getTime() - messageDate.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (days > 0) {
-      return `${days} día${days > 1 ? 's' : ''} atrás`;
-    } else if (hours > 0) {
-      return `${hours} hora${hours > 1 ? 's' : ''} atrás`;
-    } else {
-      return 'Hace poco';
-    }
-  }, []);
+    // Necesitamos usar el hook dentro del componente, no aquí
+    return [];
+  }, [currentChatId]);
 
   // Función para limpiar errores
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
+  // Función para obtener título del chat actual
+  const getCurrentChatTitle = useCallback((): string => {
+    if (!currentChatId || currentChatId === 'new-chat') return 'Nueva consulta legal';
+    
+    const currentChat = chatHistory.find(chat => chat.id === currentChatId);
+    return currentChat?.title || 'Chat Legal';
+  }, [currentChatId, chatHistory]);
+
+  // Actualizar estado de carga general
+  const isLoadingGeneral = isLoading || isLoadingChats || createChatMutation.isLoading || continueChatMutation.isLoading;
+
   return {
     // Estado
     currentChatId,
     chatHistory,
-    isLoading,
-    error,
+    isLoading: isLoadingGeneral,
+    error: error || (chatsError ? 'Error al cargar chats' : null),
     
-    // Acciones
+    // Acciones principales
     startNewChat,
     selectChat,
+    sendMessage,
     deleteChat,
-    updateChatLastMessage,
-    updateChatTitle,
-    loadChatHistory,
-    clearError,
     
-    // Utilidades
-    formatTimestamp,
+    // Funciones auxiliares
+    clearError,
+    getCurrentChatMessages,
+    getCurrentChatTitle,
+    refetchChats,
+    
+    // Hooks específicos para componentes
+    useCurrentChatMessages,
+    convertApiMessagesToLocal,
     
     // Computed values
-    hasActiveChat: !!currentChatId,
+    hasActiveChat: !!currentChatId && currentChatId !== 'new-chat',
     chatCount: chatHistory.length,
-    currentChat: chatHistory.find(chat => chat.id === currentChatId) || null
+    currentChat: chatHistory.find(chat => chat.id === currentChatId) || null,
+    
+    // Estados de mutación
+    isCreatingChat: createChatMutation.isLoading,
+    isSendingMessage: continueChatMutation.isLoading || createChatMutation.isLoading
   };
 };

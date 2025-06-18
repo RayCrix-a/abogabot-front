@@ -1,66 +1,89 @@
 import { useState, useRef, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
+import { useChatLegal } from '@/hooks/useChats';
+import { ChatHistoryMessage } from '@/generated/api/data-contracts';
 
 export interface Message {
   id: number;
   content: string;
-  sender: string;
+  sender: 'user' | 'bot';
   timestamp: string;
   isError?: boolean;
 }
 
 interface ChatBoxProps {
-  caseId: string;
-  onMessageSent: (message: string) => void;
+  caseId?: string; // Opcional, para compatibilidad
+  onMessageSent?: (message: string) => void;
   chatTitle: string;
+  // Agregar props explícitas para el estado del chat
+  currentChatId?: string | null;
+  forceRefresh?: boolean;
 }
 
-const ChatBox = ({ caseId, onMessageSent, chatTitle }: ChatBoxProps) => {
+const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }: ChatBoxProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  
+  const {
+    currentChatId: hookCurrentChatId,
+    sendMessage,
+    isLoading,
+    isSendingMessage,
+    useCurrentChatMessages,
+    convertApiMessagesToLocal,
+    getCurrentChatTitle
+  } = useChatLegal();
 
-  // Cargar mensajes iniciales cuando cambia el caseId
+  // Usar el currentChatId de props si está disponible, sino el del hook
+  const effectiveCurrentChatId = propCurrentChatId !== undefined ? propCurrentChatId : hookCurrentChatId;
+
+  // Query para obtener mensajes del chat actual
+  const { 
+    data: apiMessages, 
+    isLoading: isLoadingMessages,
+    error: messagesError,
+    refetch: refetchMessages 
+  } = useCurrentChatMessages(effectiveCurrentChatId && effectiveCurrentChatId !== 'new-chat' ? effectiveCurrentChatId : null);
+
+  // Forzar refetch cuando cambie el currentChatId
   useEffect(() => {
-    if (caseId) {
-      loadInitialMessages();
-    } else {
+    if (effectiveCurrentChatId && effectiveCurrentChatId !== 'new-chat') {
+      refetchMessages();
+    }
+  }, [effectiveCurrentChatId, refetchMessages]);
+
+  // Actualizar mensajes locales cuando cambien los de la API
+  useEffect(() => {
+    if (apiMessages) {
+      const localMessages = convertApiMessagesToLocal(apiMessages);
+      setMessages(localMessages);
+    } else if (!effectiveCurrentChatId || effectiveCurrentChatId === 'new-chat') {
+      // Limpiar mensajes para nuevo chat
       setMessages([]);
     }
-  }, [caseId]);
+  }, [apiMessages, convertApiMessagesToLocal, effectiveCurrentChatId]);
 
   // Desplazar al último mensaje cuando se añade uno nuevo
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping]);
 
-  // Función para cargar mensajes iniciales
-  const loadInitialMessages = () => {
-    setLoading(true);
-    
-    // Simular carga de mensajes existentes para este chat
-    setTimeout(() => {
-      const initialMessages: Message[] = [
-        {
-          id: 1,
-          content: 'Hola, soy AbogaBot. He revisado tu consulta legal anterior y estoy listo para ayudarte.',
-          sender: 'bot',
-          timestamp: new Date(Date.now() - 60000).toISOString()
-        }
-      ];
-      
-      setMessages(initialMessages);
-      setLoading(false);
-    }, 1000);
-  };
+  // Manejar errores de mensajes
+  useEffect(() => {
+    if (messagesError) {
+      console.error('Error al cargar mensajes:', messagesError);
+      toast.error('Error al cargar el historial del chat');
+    }
+  }, [messagesError]);
 
   // Función para enviar un nuevo mensaje
-  const sendMessage = async (content: string) => {
-    if (!content.trim() || loading) return;
+  const handleSendMessage = async (content: string) => {
+    if (!content.trim() || isSendingMessage) return;
 
-    // Añadir mensaje del usuario inmediatamente
+    // Crear mensaje del usuario inmediatamente para UI responsiva
     const userMessage: Message = {
       id: Date.now(),
       content,
@@ -69,42 +92,37 @@ const ChatBox = ({ caseId, onMessageSent, chatTitle }: ChatBoxProps) => {
     };
     
     setMessages(prev => [...prev, userMessage]);
+    setIsTyping(true);
     
     // Notificar al componente padre sobre el nuevo mensaje
     if (onMessageSent) {
       onMessageSent(content);
     }
 
-    // Mostrar indicador de typing
-    setIsTyping(true);
-    setLoading(true);
-    
     try {
-      // Aquí iría la llamada real a la API de AbogaBot
-      // Por ahora simulamos la respuesta
-      setTimeout(() => {
-        const botResponse: Message = {
+      // Enviar mensaje a la API
+      const response = await sendMessage(content);
+      
+      if (response) {
+        // Crear mensaje de respuesta del bot
+        const botMessage: Message = {
           id: Date.now() + 1,
-          content: generateBotResponse(content),
+          content: response.answer,
           sender: 'bot',
-          timestamp: new Date().toISOString()
+          timestamp: response.createdAt
         };
         
-        setMessages(prev => [...prev, botResponse]);
-        setIsTyping(false);
-        setLoading(false);
-
+        setMessages(prev => [...prev, botMessage]);
+        
         // Notificar sobre la respuesta del bot también
         if (onMessageSent) {
-          onMessageSent(botResponse.content);
+          onMessageSent(botMessage.content);
         }
-      }, 1500 + Math.random() * 1000); // Simular tiempo de respuesta variable
+      }
     } catch (error) {
       console.error('Error al enviar mensaje:', error);
-      setIsTyping(false);
-      setLoading(false);
       
-      // Mensaje de error
+      // Crear mensaje de error
       const errorMessage: Message = {
         id: Date.now() + 1,
         content: 'Lo siento, ha ocurrido un error. Por favor, intenta nuevamente.',
@@ -114,20 +132,10 @@ const ChatBox = ({ caseId, onMessageSent, chatTitle }: ChatBoxProps) => {
       };
       
       setMessages(prev => [...prev, errorMessage]);
+      toast.error('Error al enviar el mensaje');
+    } finally {
+      setIsTyping(false);
     }
-  };
-
-  // Función para generar respuestas simuladas del bot
-  const generateBotResponse = (userMessage: string): string => {
-    const responses = [
-      'Entiendo tu consulta. Basándome en la legislación chilena, puedo decirte que...',
-      'Esa es una excelente pregunta legal. Según el Código Civil chileno...',
-      'Para tu situación específica, te recomiendo considerar los siguientes aspectos legales...',
-      'Según la jurisprudencia reciente en Chile, este tipo de casos se resuelven...',
-      'Es importante que sepas que en materia legal chilena, este procedimiento requiere...'
-    ];
-    
-    return responses[Math.floor(Math.random() * responses.length)];
   };
 
   // Función para desplazarse al último mensaje
@@ -135,16 +143,28 @@ const ChatBox = ({ caseId, onMessageSent, chatTitle }: ChatBoxProps) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Función para limpiar el chat
-  const clearChat = () => {
-    setMessages([]);
+  // Obtener título dinámico
+  const dynamicTitle = getCurrentChatTitle() || chatTitle;
+
+  // Mensaje de bienvenida para nuevos chats
+  const welcomeMessage: Message = {
+    id: 0,
+    content: 'Hola, soy AbogaBot. Estoy aquí para ayudarte con tus consultas legales. ¿En qué puedo asistirte hoy?',
+    sender: 'bot',
+    timestamp: new Date().toISOString()
   };
+
+  // Determinar qué mensajes mostrar
+  const shouldShowWelcome = !effectiveCurrentChatId || effectiveCurrentChatId === 'new-chat';
+  const displayMessages = shouldShowWelcome && messages.length === 0 
+    ? [welcomeMessage] 
+    : messages;
 
   return (
     <div className="flex flex-col h-full chat-container">
       {/* Área de mensajes */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 chat-messages">
-        {loading && messages.length === 0 ? (
+        {isLoadingMessages && effectiveCurrentChatId && effectiveCurrentChatId !== 'new-chat' ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
@@ -153,14 +173,14 @@ const ChatBox = ({ caseId, onMessageSent, chatTitle }: ChatBoxProps) => {
           </div>
         ) : (
           <>
-            {messages.length === 0 ? (
+            {displayMessages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mb-4 mx-auto">
                     <span className="text-2xl">🤖</span>
                   </div>
                   <p className="text-gray-400 mb-2">
-                    {chatTitle || 'Nueva conversación'}
+                    {dynamicTitle}
                   </p>
                   <p className="text-gray-500 text-sm">
                     Envía un mensaje para comenzar tu consulta legal
@@ -169,7 +189,7 @@ const ChatBox = ({ caseId, onMessageSent, chatTitle }: ChatBoxProps) => {
               </div>
             ) : (
               <>
-                {messages.map(message => (
+                {displayMessages.map(message => (
                   <ChatMessage 
                     key={message.id} 
                     message={message} 
@@ -200,10 +220,19 @@ const ChatBox = ({ caseId, onMessageSent, chatTitle }: ChatBoxProps) => {
       {/* Entrada de texto */}
       <div className="p-4 border-t border-gray-700 chat-input-container">
         <ChatInput 
-          onSendMessage={sendMessage} 
-          disabled={loading}
+          onSendMessage={handleSendMessage} 
+          disabled={isSendingMessage}
           placeholder="Escribe tu consulta legal..."
         />
+        
+        {/* Indicador de estado */}
+        {isSendingMessage && (
+          <div className="mt-2 text-center">
+            <span className="text-xs text-gray-400">
+              Enviando mensaje...
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

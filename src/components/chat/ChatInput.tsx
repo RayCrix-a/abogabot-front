@@ -13,8 +13,9 @@ const ChatInput = ({ onSendMessage, disabled, placeholder = "Escribe tu mensaje.
   // Manejar el envío del mensaje
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
     if (message.trim() && !disabled) {
-      onSendMessage(message);
+      onSendMessage(message.trim());
       setMessage('');
     }
   };
@@ -27,25 +28,35 @@ const ChatInput = ({ onSendMessage, disabled, placeholder = "Escribe tu mensaje.
     }
   };
 
+  // Manejar cambios en el input
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="flex items-center">
       <input
         type="text"
         value={message}
-        onChange={(e) => setMessage(e.target.value)}
+        onChange={handleChange}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
-        className="input-field flex-1 py-2"
+        className={`flex-1 px-4 py-3 rounded-md bg-dark-input text-white 
+          border border-gray-700 focus:border-primary focus:outline-none 
+          focus:ring-1 focus:ring-primary transition-all duration-200
+          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+        `}
+        autoComplete="off"
       />
       <button
         type="submit"
         disabled={!message.trim() || disabled}
-        className={`ml-2 p-2 rounded-full ${
+        className={`ml-2 p-3 rounded-full transition-colors ${
           !message.trim() || disabled
-            ? 'bg-gray-700 text-gray-500'
+            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
             : 'bg-primary text-white hover:bg-primary-dark'
-        } transition-colors`}
+        }`}
       >
         <FiSend className="w-5 h-5" />
       </button>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, ReactNode } from 'react';
 import { FiMessageCircle, FiClock, FiTrash2, FiPlus, FiX } from 'react-icons/fi';
+import { toast } from 'react-toastify';
 
-// Definimos la interfaz para el objeto Chat
+// Interfaz actualizada para el objeto Chat desde la API
 interface Chat {
   id: string;
   title: string;
@@ -12,7 +13,7 @@ interface Chat {
   createdAt: Date;
 }
 
-// Definimos las props para el componente ChatLayout
+// Props para el componente ChatLayout
 interface ChatLayoutProps {
   children: ReactNode;
   currentChatId: string | null;
@@ -21,6 +22,7 @@ interface ChatLayoutProps {
   onSelectChat: (chatId: string) => void;
   onDeleteChat: (chatId: string) => Promise<void>;
   leftSidebarOpen?: boolean;
+  isLoading?: boolean;
 }
 
 const ChatLayout = ({ 
@@ -30,9 +32,11 @@ const ChatLayout = ({
   onStartNewChat, 
   onSelectChat, 
   onDeleteChat,
-  leftSidebarOpen = false 
+  leftSidebarOpen = false,
+  isLoading = false
 }: ChatLayoutProps) => {
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
   const historyRef = useRef<HTMLDivElement>(null);
 
   // Manejar estado del sidebar derecho en localStorage
@@ -63,10 +67,31 @@ const ChatLayout = ({
     }
   };
 
-  const handleDeleteChat = (chatId: string, e: React.MouseEvent) => {
+  const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onDeleteChat) {
-      onDeleteChat(chatId);
+    
+    if (deletingChatId === chatId) return; // Prevenir doble click
+    
+    try {
+      setDeletingChatId(chatId);
+      await onDeleteChat(chatId);
+    } catch (error) {
+      console.error('Error al eliminar chat:', error);
+      toast.error('Error al eliminar la conversación');
+    } finally {
+      setDeletingChatId(null);
+    }
+  };
+
+  const handleStartNewChat = async () => {
+    try {
+      const result = await onStartNewChat();
+      if (result) {
+        toast.success('Nueva conversación iniciada');
+      }
+    } catch (error) {
+      console.error('Error al iniciar nuevo chat:', error);
+      toast.error('Error al iniciar nueva conversación');
     }
   };
 
@@ -79,26 +104,34 @@ const ChatLayout = ({
       {/* Contenido principal del chat */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header del chat */}
-        <div className="bg-dark-lighter px-4 py-0 border-b border-gray-700 flex-shrink-0">
+        <div className="bg-dark-lighter px-4 py-3 border-b border-gray-700 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <FiMessageCircle className="text-primary mr-2 w-5 h-5" />
               <div>
                 <h1 className="text-lg font-semibold text-white">Chat Legal</h1>
-                <p className="text-gray-400 text-sm">Consulta con AbogaBot sobre temas legales</p>
+                <p className="text-gray-400 text-sm">
+                  Consulta con AbogaBot sobre temas legales
+                  {chatHistory.length > 0 && (
+                    <span className="ml-2">• {chatHistory.length} conversación{chatHistory.length === 1 ? '' : 'es'}</span>
+                  )}
+                </p>
               </div>
             </div>
             
-            {/* Botón para abrir el sidebar derecho - Solo visible cuando está cerrado */}
-            {!rightSidebarOpen && (
-              <button
-                onClick={toggleRightSidebar}
-                className="p-2 text-gray-400 hover:text-white hover:bg-dark-light rounded-md transition-colors"
-                title="Mostrar historial"
-              >
-                <FiClock className="w-5 h-5" />
-              </button>
-            )}
+            {/* Controles del header */}
+            <div className="flex items-center space-x-2">
+              {/* Botón para abrir el sidebar derecho - Solo visible cuando está cerrado */}
+              {!rightSidebarOpen && (
+                <button
+                  onClick={toggleRightSidebar}
+                  className="p-2 text-gray-400 hover:text-white hover:bg-dark-light rounded-md transition-colors"
+                  title="Mostrar historial"
+                >
+                  <FiClock className="w-5 h-5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -127,11 +160,11 @@ const ChatLayout = ({
       >
         <div className="h-full flex flex-col">
           {/* Header del historial */}
-          <div className="px-4 py-0 border-b border-gray-700">
+          <div className="px-4 py-3 border-b border-gray-700">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white flex items-center">
                 <FiClock className="mr-2 w-5 h-5" />
-                Historial de Chats
+                Historial
               </h2>
               <button
                 onClick={toggleRightSidebar}
@@ -145,20 +178,24 @@ const ChatLayout = ({
 
           {/* Contenido del historial */}
           <div className="p-4 flex-1 flex flex-col overflow-hidden">
-            {/* Botón Nuevo chat - Solo visible cuando hay un chat activo */}
-            {currentChatId && (
-              <button
-                onClick={onStartNewChat}
-                className="w-full btn-primary py-3 rounded-md flex items-center justify-center gap-2 mb-4 hover-lift"
-              >
-                <FiPlus className="w-4 h-4" />
-                Nuevo Chat
-              </button>
-            )}
+            {/* Botón Nuevo chat */}
+            <button
+              onClick={handleStartNewChat}
+              disabled={isLoading}
+              className="w-full btn-primary py-3 rounded-md flex items-center justify-center gap-2 mb-4 hover-lift disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FiPlus className="w-4 h-4" />
+              {isLoading ? 'Cargando...' : 'Nuevo Chat'}
+            </button>
 
             {/* Lista de chats del historial */}
             <div className="flex-1 overflow-y-auto space-y-2 chat-history-scroll">
-              {chatHistory.length > 0 ? (
+              {isLoading && chatHistory.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
+                  <p className="text-gray-400 text-sm">Cargando historial...</p>
+                </div>
+              ) : chatHistory.length > 0 ? (
                 chatHistory.map((chat) => (
                   <div
                     key={chat.id}
@@ -171,14 +208,19 @@ const ChatLayout = ({
                   >
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-medium text-white text-sm truncate flex-1 mr-2">
-                        {chat.title}
+                        {chat.title || 'Conversación sin título'}
                       </h3>
                       <button 
                         onClick={(e) => handleDeleteChat(chat.id, e)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded transition-all duration-200 flex-shrink-0"
+                        disabled={deletingChatId === chat.id}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded transition-all duration-200 flex-shrink-0 disabled:opacity-50"
                         title="Eliminar chat"
                       >
-                        <FiTrash2 className="w-3 h-3" />
+                        {deletingChatId === chat.id ? (
+                          <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <FiTrash2 className="w-3 h-3" />
+                        )}
                       </button>
                     </div>
                     
@@ -190,9 +232,11 @@ const ChatLayout = ({
                     
                     <div className="flex justify-between items-center text-xs text-gray-500">
                       <span>{formatTimestamp(chat.timestamp)}</span>
-                      <span className="bg-dark/50 px-2 py-1 rounded-full">
-                        {chat.messageCount} mensaje{chat.messageCount !== 1 ? 's' : ''}
-                      </span>
+                      {chat.messageCount > 0 && (
+                        <span className="bg-dark/50 px-2 py-1 rounded-full">
+                          {chat.messageCount} mensaje{chat.messageCount !== 1 ? 's' : ''}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))
@@ -216,7 +260,7 @@ const ChatLayout = ({
               <div className="pt-4 border-t border-gray-700 flex-shrink-0">
                 <div className="text-center">
                   <p className="text-xs text-gray-500">
-                    {chatHistory.length} chat{chatHistory.length !== 1 ? 's' : ''} en el historial
+                    {chatHistory.length} chat{chatHistory.length !== 1 ? 's' : ''} en total
                   </p>
                   {chatHistory.length > 5 && (
                     <p className="text-xs text-gray-600 mt-1">
