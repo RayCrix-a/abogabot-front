@@ -17,7 +17,7 @@ interface ChatBoxProps {
   caseId?: string;
   onMessageSent?: (message: string) => void;
   chatTitle: string;
-  currentChatId: string;
+  currentChatId: string; // Obligatorio para buenas prácticas
   forceRefresh?: boolean;
 }
 

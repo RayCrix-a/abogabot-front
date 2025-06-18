@@ -127,7 +127,7 @@ const ChatLegalPage = () => {
       <ChatBox 
         onMessageSent={handleMessageSent}
         chatTitle={getCurrentChatTitle()}
-        currentChatId={currentChatId!}
+        currentChatId={currentChatId!} // Nunca será null aquí
       />
     );
   };

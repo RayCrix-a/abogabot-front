@@ -267,7 +267,8 @@ export const CaseDetail = () => {
                   console.log('Message sent:', message);
                   // Handle message sending logic here
                 }}
-                chatTitle={lawsuit.title || lawsuit.subjectMatter || 'Chat de consulta'}
+                  chatTitle={lawsuit.title || lawsuit.subjectMatter || 'Chat de consulta'}
+                  currentChatId="new-chat" // Agregamos esta línea obligatoria
               />
             )}
           </div>
