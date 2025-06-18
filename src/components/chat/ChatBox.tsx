@@ -14,11 +14,10 @@ export interface Message {
 }
 
 interface ChatBoxProps {
-  caseId?: string; // Opcional, para compatibilidad
+  caseId?: string;
   onMessageSent?: (message: string) => void;
   chatTitle: string;
-  // Agregar props explícitas para el estado del chat
-  currentChatId?: string | null;
+  currentChatId: string;
   forceRefresh?: boolean;
 }
 
@@ -28,17 +27,14 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   
   const {
-    currentChatId: hookCurrentChatId,
     sendMessage,
-    isLoading,
     isSendingMessage,
     useCurrentChatMessages,
     convertApiMessagesToLocal,
     getCurrentChatTitle
   } = useChatLegal();
 
-  // Usar el currentChatId de props si está disponible, sino el del hook
-  const effectiveCurrentChatId = propCurrentChatId !== undefined ? propCurrentChatId : hookCurrentChatId;
+  const effectiveCurrentChatId = propCurrentChatId;
 
   // Query para obtener mensajes del chat actual
   const { 
@@ -52,16 +48,17 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
   useEffect(() => {
     if (effectiveCurrentChatId && effectiveCurrentChatId !== 'new-chat') {
       refetchMessages();
+    } else {
+      setMessages([]);
     }
   }, [effectiveCurrentChatId, refetchMessages]);
 
   // Actualizar mensajes locales cuando cambien los de la API
   useEffect(() => {
-    if (apiMessages) {
+    if (apiMessages && effectiveCurrentChatId && effectiveCurrentChatId !== 'new-chat') {
       const localMessages = convertApiMessagesToLocal(apiMessages);
       setMessages(localMessages);
-    } else if (!effectiveCurrentChatId || effectiveCurrentChatId === 'new-chat') {
-      // Limpiar mensajes para nuevo chat
+    } else if (effectiveCurrentChatId === 'new-chat') {
       setMessages([]);
     }
   }, [apiMessages, convertApiMessagesToLocal, effectiveCurrentChatId]);
@@ -79,7 +76,7 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
     }
   }, [messagesError]);
 
-  // Función para enviar un nuevo mensaje
+  // Función para enviar un nuevo mensaje con sessionId explícito
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isSendingMessage) return;
 
@@ -94,17 +91,14 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
     
-    // Notificar al componente padre sobre el nuevo mensaje
     if (onMessageSent) {
       onMessageSent(content);
     }
 
     try {
-      // Enviar mensaje a la API
-      const response = await sendMessage(content);
+      const response = await sendMessage(content, effectiveCurrentChatId);
       
       if (response) {
-        // Crear mensaje de respuesta del bot
         const botMessage: Message = {
           id: Date.now() + 1,
           content: response.answer,
@@ -114,7 +108,6 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
         
         setMessages(prev => [...prev, botMessage]);
         
-        // Notificar sobre la respuesta del bot también
         if (onMessageSent) {
           onMessageSent(botMessage.content);
         }
@@ -122,7 +115,6 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
     } catch (error) {
       console.error('Error al enviar mensaje:', error);
       
-      // Crear mensaje de error
       const errorMessage: Message = {
         id: Date.now() + 1,
         content: 'Lo siento, ha ocurrido un error. Por favor, intenta nuevamente.',
@@ -155,8 +147,9 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
   };
 
   // Determinar qué mensajes mostrar
-  const shouldShowWelcome = !effectiveCurrentChatId || effectiveCurrentChatId === 'new-chat';
-  const displayMessages = shouldShowWelcome && messages.length === 0 
+  const isNewChat = effectiveCurrentChatId === 'new-chat';
+  
+  const displayMessages = isNewChat && messages.length === 0 
     ? [welcomeMessage] 
     : messages;
 
@@ -173,7 +166,7 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
           </div>
         ) : (
           <>
-            {displayMessages.length === 0 ? (
+            {isNewChat && messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mb-4 mx-auto">
@@ -183,7 +176,21 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
                     {dynamicTitle}
                   </p>
                   <p className="text-gray-500 text-sm">
-                    Envía un mensaje para comenzar tu consulta legal
+                    Escribe tu consulta legal para comenzar
+                  </p>
+                </div>
+              </div>
+            ) : displayMessages.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mb-4 mx-auto">
+                    <span className="text-2xl">📱</span>
+                  </div>
+                  <p className="text-gray-400 mb-2">
+                    Chat cargando...
+                  </p>
+                  <p className="text-gray-500 text-sm">
+                    Esperando mensajes del servidor
                   </p>
                 </div>
               </div>

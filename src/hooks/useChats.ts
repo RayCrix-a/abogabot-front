@@ -38,7 +38,7 @@ export const useChatLegal = () => {
   const { getAccessTokenSilently } = useAuth0();
   const queryClient = useQueryClient();
   
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [currentChatId, setCurrentChatId] = useState<string | null>('new-chat');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,7 +54,7 @@ export const useChatLegal = () => {
       const accessToken = await getAccessTokenSilently();
       const response = await chatResource.getAllChats({
         page: 1,
-        recordsPerPage: 50 // Obtener hasta 50 conversaciones
+        recordsPerPage: 50
       }, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -62,7 +62,7 @@ export const useChatLegal = () => {
       });
       return response.data;
     },
-    staleTime: 30000, // 30 segundos
+    staleTime: 30000,
   });
 
   // Query para obtener mensajes de un chat específico
@@ -80,7 +80,7 @@ export const useChatLegal = () => {
         return response.data;
       },
       enabled: !!sessionId,
-      staleTime: 10000, // 10 segundos
+      staleTime: 10000,
     });
   };
 
@@ -113,6 +113,7 @@ export const useChatLegal = () => {
     mutationFn: async ({ sessionId, prompt }: { sessionId: string, prompt: string }): Promise<ChatLastAnswerResponse> => {
       const accessToken = await getAccessTokenSilently();
       const chatPrompt: ChatPrompt = { question: prompt };
+      
       const response = await chatResource.continueChat(sessionId, chatPrompt, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -135,9 +136,9 @@ export const useChatLegal = () => {
   const chatHistory: Chat[] = (chatListResponse?.results || []).map((apiChat: ChatSummaryResponse) => ({
     id: apiChat.sessionId,
     title: apiChat.title,
-    lastMessage: '', // La API no devuelve último mensaje en el resumen
+    lastMessage: '',
     timestamp: new Date(apiChat.createdAt),
-    messageCount: 0, // Calculado dinámicamente si es necesario
+    messageCount: 0,
     status: 'active',
     createdAt: new Date(apiChat.createdAt)
   }));
@@ -149,11 +150,9 @@ export const useChatLegal = () => {
       setError(null);
       
       if (initialMessage) {
-        // Si hay mensaje inicial, crear chat con ese mensaje
         const result = await createChatMutation.mutateAsync(initialMessage);
         return result.sessionId;
       } else {
-        // Cambiar a modo de nuevo chat sin crear aún
         setCurrentChatId('new-chat');
         setIsLoading(false);
         return 'new-chat';
@@ -174,11 +173,16 @@ export const useChatLegal = () => {
       return;
     }
 
+    if (chatId === 'new-chat') {
+      setCurrentChatId('new-chat');
+      setError(null);
+      return;
+    }
+
     const chat = chatHistory.find(c => c.id === chatId);
     
-    if (!chat && chatId !== 'new-chat') {
-      console.warn('Chat no encontrado:', chatId);
-      toast.error('Chat no encontrado');
+    if (!chat) {
+      console.warn('Chat no encontrado en historial:', chatId);
       return;
     }
 
@@ -186,22 +190,22 @@ export const useChatLegal = () => {
     setError(null);
   }, [chatHistory]);
 
-  // Función para enviar mensaje
-  const sendMessage = useCallback(async (message: string): Promise<ChatLastAnswerResponse | null> => {
+  // Función para enviar mensaje con sessionId explícito
+  const sendMessage = useCallback(async (message: string, explicitSessionId?: string | null): Promise<ChatLastAnswerResponse | null> => {
     if (!message.trim()) return null;
 
     try {
       setIsLoading(true);
       setError(null);
 
-      if (!currentChatId || currentChatId === 'new-chat') {
-        // Crear nuevo chat con el primer mensaje
+      const targetSessionId = explicitSessionId !== undefined ? explicitSessionId : currentChatId;
+
+      if (!targetSessionId || targetSessionId === 'new-chat') {
         const result = await createChatMutation.mutateAsync(message);
         return result;
       } else {
-        // Continuar chat existente
         const result = await continueChatMutation.mutateAsync({
-          sessionId: currentChatId,
+          sessionId: targetSessionId,
           prompt: message
         });
         return result;
@@ -215,7 +219,7 @@ export const useChatLegal = () => {
     }
   }, [currentChatId, createChatMutation, continueChatMutation]);
 
-  // Función para eliminar un chat (no está en la API, simular localmente)
+  // Función para eliminar un chat
   const deleteChat = useCallback(async (chatId: string) => {
     try {
       if (!chatId) {
@@ -226,12 +230,10 @@ export const useChatLegal = () => {
       const confirmDelete = window.confirm('¿Estás seguro de que deseas eliminar este chat?');
       if (!confirmDelete) return;
 
-      // Como no hay endpoint de eliminación, solo removemos localmente
       if (currentChatId === chatId) {
-        setCurrentChatId(null);
+        setCurrentChatId('new-chat');
       }
 
-      // Invalidar queries para "simular" eliminación
       queryClient.invalidateQueries({ queryKey: ['chats'] });
       queryClient.removeQueries({ queryKey: ['chat-messages', chatId] });
 
@@ -257,9 +259,8 @@ export const useChatLegal = () => {
   // Función para obtener mensajes del chat actual
   const getCurrentChatMessages = useCallback((sessionId?: string): Message[] => {
     const chatId = sessionId || currentChatId;
-    if (!chatId || chatId === 'new-chat') return [];
+    if (!chatId) return [];
     
-    // Necesitamos usar el hook dentro del componente, no aquí
     return [];
   }, [currentChatId]);
 
@@ -270,10 +271,12 @@ export const useChatLegal = () => {
 
   // Función para obtener título del chat actual
   const getCurrentChatTitle = useCallback((): string => {
-    if (!currentChatId || currentChatId === 'new-chat') return 'Nueva consulta legal';
+    if (currentChatId === 'new-chat') return 'Nueva consulta legal';
     
     const currentChat = chatHistory.find(chat => chat.id === currentChatId);
-    return currentChat?.title || 'Chat Legal';
+    const title = currentChat?.title || 'Chat Legal';
+    
+    return title;
   }, [currentChatId, chatHistory]);
 
   // Actualizar estado de carga general
@@ -303,7 +306,7 @@ export const useChatLegal = () => {
     convertApiMessagesToLocal,
     
     // Computed values
-    hasActiveChat: !!currentChatId && currentChatId !== 'new-chat',
+    hasActiveChat: currentChatId !== 'new-chat',
     chatCount: chatHistory.length,
     currentChat: chatHistory.find(chat => chat.id === currentChatId) || null,
     

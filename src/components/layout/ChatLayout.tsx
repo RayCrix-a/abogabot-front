@@ -70,7 +70,7 @@ const ChatLayout = ({
   const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (deletingChatId === chatId) return; // Prevenir doble click
+    if (deletingChatId === chatId) return;
     
     try {
       setDeletingChatId(chatId);
@@ -93,6 +93,11 @@ const ChatLayout = ({
       console.error('Error al iniciar nuevo chat:', error);
       toast.error('Error al iniciar nueva conversación');
     }
+  };
+
+  // Función para seleccionar chat
+  const handleSelectChat = (chatId: string) => {
+    onSelectChat(chatId);
   };
 
   const toggleRightSidebar = () => {
@@ -199,7 +204,7 @@ const ChatLayout = ({
                 chatHistory.map((chat) => (
                   <div
                     key={chat.id}
-                    onClick={() => onSelectChat && onSelectChat(chat.id)}
+                    onClick={() => handleSelectChat(chat.id)}
                     className={`p-3 rounded-lg cursor-pointer transition-all duration-200 group fade-in hover-lift ${
                       currentChatId === chat.id
                         ? 'bg-primary/20 border border-primary/30 shadow-custom'
@@ -238,6 +243,14 @@ const ChatLayout = ({
                         </span>
                       )}
                     </div>
+                    
+                    {/* Mostrar indicador de chat activo */}
+                    {currentChatId === chat.id && (
+                      <div className="mt-2 flex items-center text-xs text-primary">
+                        <div className="w-2 h-2 bg-primary rounded-full mr-2 animate-pulse"></div>
+                        Chat activo
+                      </div>
+                    )}
                   </div>
                 ))
               ) : (
@@ -267,6 +280,10 @@ const ChatLayout = ({
                       Desplázate para ver más
                     </p>
                   )}
+                  {/* Mostrar currentChatId actual - ESTE SE MANTIENE */}
+                  <p className="text-xs text-blue-400 mt-1">
+                    Actual: {currentChatId === 'new-chat' ? 'nuevo chat' : currentChatId}
+                  </p>
                 </div>
               </div>
             )}
