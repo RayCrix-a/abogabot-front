@@ -75,7 +75,6 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
       toast.error('Error al cargar el historial del chat');
     }
   }, [messagesError]);
-
   // Función para enviar un nuevo mensaje con sessionId explícito
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isSendingMessage) return;
@@ -93,10 +92,31 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
     
     if (onMessageSent) {
       onMessageSent(content);
-    }
+    }    try {
+      // Si estamos en un nuevo chat, forzar un refetch después de enviar el mensaje
+      // para asegurar que el nuevo sessionId se refleje en la UI
+      const isNewChatSession = effectiveCurrentChatId === 'new-chat';
+      const response = await sendMessage(content, effectiveCurrentChatId);      // Si era un chat nuevo y tenemos una respuesta con sessionId, seleccionar ese chat
+      // Esto mantendrá al usuario en la misma conversación después de crear un nuevo chat
+      if (isNewChatSession && response && response.sessionId) {
 
-    try {
-      const response = await sendMessage(content, effectiveCurrentChatId);
+        
+        // SOLUCIÓN DIRECTA: Enviar comando de selección inmediatamente
+        if (onMessageSent) {
+          onMessageSent(`__select_chat__:${response.sessionId}`);
+        }
+        
+        // Programar múltiples intentos de selección para garantizar que funcione
+        const retryIntervals = [500, 1000, 2000]; // Intentos a 0.5s, 1s y 2s
+        
+        retryIntervals.forEach(delay => {
+          setTimeout(() => {
+            if (onMessageSent) {
+              onMessageSent(`__select_chat__:${response.sessionId}`);
+            }
+          }, delay);
+        });
+      }
       
       if (response) {
         const botMessage: Message = {

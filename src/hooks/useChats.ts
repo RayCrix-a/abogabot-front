@@ -165,7 +165,6 @@ export const useChatLegal = () => {
       setIsLoading(false);
     }
   }, [createChatMutation]);
-
   // Función para seleccionar un chat existente
   const selectChat = useCallback((chatId: string) => {
     if (!chatId) {
@@ -174,21 +173,39 @@ export const useChatLegal = () => {
     }
 
     if (chatId === 'new-chat') {
+      console.log('Seleccionando nuevo chat');
       setCurrentChatId('new-chat');
       setError(null);
+      return;
+    }
+
+    // Si el ID ya está seleccionado, no hacemos nada
+    if (currentChatId === chatId) {
+      console.log('Chat ya seleccionado:', chatId);
       return;
     }
 
     const chat = chatHistory.find(c => c.id === chatId);
     
     if (!chat) {
-      console.warn('Chat no encontrado en historial:', chatId);
+     // console.warn('Chat no encontrado en historial:', chatId);
+     
+      // A pesar de no encontrarlo, intentamos seleccionarlo
+      // ya que podría ser un chat recién creado que aún no aparece en el historial
+
+      //console.log('Forzando selección de chat aunque no esté en el historial:', chatId);
+      setCurrentChatId(chatId);
+      
+      // Invalidar las consultas para forzar una actualización del historial
+      queryClient.invalidateQueries({ queryKey: ['chats'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', chatId] });
       return;
     }
 
+    console.log('Seleccionando chat existente:', chatId);
     setCurrentChatId(chatId);
     setError(null);
-  }, [chatHistory]);
+  }, [chatHistory, currentChatId, queryClient]);
 
   // Función para enviar mensaje con sessionId explícito
   const sendMessage = useCallback(async (message: string, explicitSessionId?: string | null): Promise<ChatLastAnswerResponse | null> => {
@@ -196,14 +213,36 @@ export const useChatLegal = () => {
 
     try {
       setIsLoading(true);
-      setError(null);
-
-      const targetSessionId = explicitSessionId !== undefined ? explicitSessionId : currentChatId;
-
-      if (!targetSessionId || targetSessionId === 'new-chat') {
+      setError(null);      const targetSessionId = explicitSessionId !== undefined ? explicitSessionId : currentChatId;      if (!targetSessionId || targetSessionId === 'new-chat') {
+        // Estamos creando un nuevo chat
         const result = await createChatMutation.mutateAsync(message);
+        
+        // Garantizar que el currentChatId se actualice inmediatamente con el nuevo sessionId
+        const newSessionId = result.sessionId;
+        
+        // Actualizar el estado de inmediato antes de cualquier operación async
+        setCurrentChatId(newSessionId);
+          // Crear una estructura temporal para el nuevo chat y actualizar el historial local
+        // Esto ayuda a que la UI muestre el nuevo chat inmediatamente sin esperar a la API
+        const tempNewChat = {
+          sessionId: newSessionId,
+          title: 'Nueva conversación', 
+          createdAt: new Date().toISOString()
+        };
+        
+        // Invalidar las consultas para forzar una actualización del historial
+        queryClient.invalidateQueries({ queryKey: ['chats'] });
+        queryClient.invalidateQueries({ queryKey: ['chat-messages', newSessionId] });
+          // Forzar refresco inmediato del historial de chats
+        try {
+          await queryClient.refetchQueries({ queryKey: ['chats'], type: 'active' });
+        } catch (err) {
+          console.error('Error al refrescar historial después de crear chat:', err);
+        }
+        
         return result;
       } else {
+        // Continuamos un chat existente
         const result = await continueChatMutation.mutateAsync({
           sessionId: targetSessionId,
           prompt: message

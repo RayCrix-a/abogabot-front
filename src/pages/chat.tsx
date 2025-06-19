@@ -10,8 +10,7 @@ import { toast } from 'react-toastify';
 const ChatLegalPage = () => {
   const { user } = useAuth0();
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
-  
-  const {
+    const {
     currentChatId,
     chatHistory,
     isLoading,
@@ -22,7 +21,8 @@ const ChatLegalPage = () => {
     hasActiveChat,
     getCurrentChatTitle,
     clearError,
-    chatCount
+    chatCount,
+    refetchChats
   } = useChatLegal();
 
   // Detectar el estado del sidebar desde localStorage
@@ -72,11 +72,20 @@ const ChatLegalPage = () => {
       }, 5000);
     }
   }, [error, clearError]);
-
   // Función para manejar el inicio de nuevo chat
   const handleStartNewChat = async (): Promise<string | null> => {
     try {
       const newChatId = await startNewChat();
+      
+      // Forzar actualización después de iniciar un nuevo chat
+      if (newChatId) {
+        // Esta actualización puede ser necesaria si el componente no se refresca automáticamente
+        setTimeout(() => {
+          // Refrescar la lista de chats para mostrar el nuevo chat
+          clearError(); // Esto forzará una re-renderización
+        }, 200);
+      }
+      
       return newChatId;
     } catch (error) {
       console.error('Error al iniciar nuevo chat:', error);
@@ -103,11 +112,33 @@ const ChatLegalPage = () => {
       console.error('Error al eliminar chat:', error);
       toast.error('Error al eliminar la conversación');
     }
-  };
-
-  // Función para manejar cuando se envía un mensaje
-  const handleMessageSent = (message: string) => {
-    // El hook se encarga de toda la lógica de mensajes
+  };  // Función para manejar cuando se envía un mensaje
+  const handleMessageSent = (message: string) => {    // Comprobar si es un mensaje especial de selección de chat
+    if (message.startsWith('__select_chat__:')) {
+      // Extraer el ID del chat
+      const chatId = message.replace('__select_chat__:', '');
+      
+      // Forzar la selección del chat sin verificar el historial
+      // Primero refrescar chats para asegurar datos actualizados
+      refetchChats()
+        .then(() => {
+          // Seleccionar el chat independientemente de si aparece en el historial o no
+          selectChat(chatId);
+          
+          // Refrescar una vez más después de un breve retraso
+          setTimeout(() => {
+            refetchChats();
+          }, 500);
+        })
+        .catch(error => {
+          console.error('Error al refrescar historial:', error);
+          // Intentar seleccionar el chat de todas formas
+          selectChat(chatId);
+        });
+      
+      return; // No procesar este mensaje como un mensaje normal
+    }
+    // El hook se encarga de toda la lógica de mensajes normales
   };
 
   // Renderizado del contenido principal del chat

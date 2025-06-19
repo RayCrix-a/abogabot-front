@@ -279,10 +279,24 @@ const ChatLayout = ({
                     <p className="text-xs text-gray-600 mt-1">
                       Desplázate para ver más
                     </p>
-                  )}
-                  {/* Mostrar currentChatId actual - ESTE SE MANTIENE */}
-                  <p className="text-xs text-blue-400 mt-1">
-                    Actual: {currentChatId === 'new-chat' ? 'nuevo chat' : currentChatId}
+                  )}                  {/* Mostrar currentChatId actual - Refleja el ID de sesión actual */}
+                  <p className="text-xs text-gray-500 mt-1 flex items-center justify-center gap-1">
+                    <span>ID de sesión:</span>
+                    {currentChatId === 'new-chat' ? (
+                      <span className="text-yellow-400 inline-flex items-center">
+                        pendiente
+                        <span className="ml-1 inline-block w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
+                      </span>
+                    ) : currentChatId ? (                      <span className="text-green-400 inline-flex items-center">
+                        <span>{currentChatId}</span>
+                        <span className="ml-1 inline-block w-2 h-2 bg-green-400 rounded-full"></span>
+                      </span>
+                    ) : (
+                      <span className="text-red-400 inline-flex items-center">
+                        no disponible
+                        <span className="ml-1 inline-block w-2 h-2 bg-red-400 rounded-full"></span>
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
