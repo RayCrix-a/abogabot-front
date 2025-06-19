@@ -243,13 +243,13 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
           </>
         )}
       </div>
-      
-      {/* Entrada de texto */}
+        {/* Entrada de texto */}
       <div className="p-4 border-t border-gray-700 chat-input-container">
         <ChatInput 
           onSendMessage={handleSendMessage} 
           disabled={isSendingMessage}
           placeholder="Escribe tu consulta legal..."
+          resetKey={effectiveCurrentChatId} // Resetear el input cuando cambie el chat
         />
         
         {/* Indicador de estado */}

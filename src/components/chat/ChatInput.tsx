@@ -1,14 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiSend } from 'react-icons/fi';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
   disabled: boolean;
   placeholder?: string;
+  resetKey?: string | number;
 }
 
-const ChatInput = ({ onSendMessage, disabled, placeholder = "Escribe tu mensaje..." }: ChatInputProps) => {
+const ChatInput = ({ onSendMessage, disabled, placeholder = "Escribe tu mensaje...", resetKey }: ChatInputProps) => {
   const [message, setMessage] = useState('');
+  
+  // Resetear el mensaje cuando cambia resetKey
+  useEffect(() => {
+    setMessage('');
+  }, [resetKey]);
 
   // Manejar el envío del mensaje
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
