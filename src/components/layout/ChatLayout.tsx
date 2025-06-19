@@ -182,15 +182,16 @@ const ChatLayout = ({
           </div>
 
           {/* Contenido del historial */}
-          <div className="p-4 flex-1 flex flex-col overflow-hidden">
+          <div className="p-4 flex-1 flex flex-col overflow-hidden"> 
+                       
             {/* Botón Nuevo chat */}
             <button
               onClick={handleStartNewChat}
-              disabled={isLoading}
+              disabled={isLoading || currentChatId === 'new-chat'}
               className="w-full btn-primary py-3 rounded-md flex items-center justify-center gap-2 mb-4 hover-lift disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FiPlus className="w-4 h-4" />
-              {isLoading ? 'Cargando...' : 'Nuevo Chat'}
+              {isLoading ? 'Cargando...' : currentChatId === 'new-chat' ? 'Preparando chat...' : 'Nuevo Chat'}
             </button>
 
             {/* Lista de chats del historial */}
