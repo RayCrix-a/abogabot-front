@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, ReactNode } from 'react';
-import { FiMessageCircle, FiClock, FiTrash2, FiPlus, FiX } from 'react-icons/fi';
+import { FiMessageCircle, FiTrash2, FiPlus, FiArrowLeft, FiArrowRight } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 
 // Interfaz actualizada para el objeto Chat desde la API
@@ -126,14 +126,13 @@ const ChatLayout = ({
             
             {/* Controles del header */}
             <div className="flex items-center space-x-2">
-              {/* Botón para abrir el sidebar derecho - Solo visible cuando está cerrado */}
-              {!rightSidebarOpen && (
+              {/* Botón para abrir el sidebar derecho - Solo visible cuando está cerrado */}              {!rightSidebarOpen && (
                 <button
                   onClick={toggleRightSidebar}
                   className="p-2 text-gray-400 hover:text-white hover:bg-dark-light rounded-md transition-colors"
-                  title="Mostrar historial"
+                  title="Expandir historial"
                 >
-                  <FiClock className="w-5 h-5" />
+                  <FiArrowLeft className="w-5 h-5" />
                 </button>
               )}
             </div>
@@ -166,17 +165,16 @@ const ChatLayout = ({
         <div className="h-full flex flex-col">
           {/* Header del historial */}
           <div className="px-4 py-3 border-b border-gray-700">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">              
               <h2 className="text-lg font-semibold text-white flex items-center">
-                <FiClock className="mr-2 w-5 h-5" />
+                <FiMessageCircle className="mr-2 w-5 h-5" />
                 Historial
-              </h2>
-              <button
+              </h2>                <button
                 onClick={toggleRightSidebar}
-                className="p-1 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded transition-colors"
-                title="Cerrar historial"
+                className="p-2 text-gray-400 hover:text-gray-300 hover:bg-gray-400/10 rounded-md transition-colors"
+                title="Contraer historial"
               >
-                <FiX className="w-4 h-4" />
+                <FiArrowRight className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -212,8 +210,8 @@ const ChatLayout = ({
                         : 'bg-dark hover:bg-dark-light hover:shadow-custom'
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-medium text-white text-sm truncate flex-1 mr-2">
+                    <div className="flex justify-between items-start mb-2">                      
+                      <h3 className="font-medium text-white text-sm flex-1 mr-2 break-words">
                         {chat.title || 'Conversación sin título'}
                       </h3>
                       <button 
@@ -288,9 +286,10 @@ const ChatLayout = ({
                         pendiente
                         <span className="ml-1 inline-block w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
                       </span>
-                    ) : currentChatId ? (                      <span className="text-green-400 inline-flex items-center">
+                    ) : currentChatId ? (
+                      <span className="text-green-400 inline-flex items-center">
                         <span>{currentChatId}</span>
-                        <span className="ml-1 inline-block w-2 h-2 bg-green-400 rounded-full"></span>
+                        <span className="ml-1 inline-block w-20 h-2 bg-green-400 rounded-full"></span>
                       </span>
                     ) : (
                       <span className="text-red-400 inline-flex items-center">
