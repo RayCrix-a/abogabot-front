@@ -137,12 +137,11 @@ const CaseDetail = () => {
         console.log('Usando ID como número:', numericId);
         await deleteLawsuit(numericId);
       }
-      
-      console.log('Operación de eliminación completada exitosamente');
+        console.log('Operación de eliminación completada exitosamente');
       queryClient.removeQueries(['lawsuit', id]);
       
       toast.success('Caso eliminado exitosamente');
-      router.push('/');
+      router.push('/cases'); // Redirigir a la página de "Mis Casos" en lugar del Dashboard
       return true;
     } catch (error) {
       console.error('Error detallado al eliminar demanda:', error);
