@@ -273,6 +273,33 @@ const createLawsuitMutation = useMutation({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Función para previsualizar un documento antes de generarlo
+  const previewDocument = useCallback(async (id: number): Promise<string> => {
+    try {
+      console.log(`Iniciando previsualización de documento para caso ID: ${id}`);
+      const accessToken = await getAccessTokenSilently();
+      const response = await lawsuitResource.request({
+        path: `/lawsuit/${id}/preview`,
+        method: 'GET',
+        baseUrl: process.env.NEXT_PUBLIC_ABOGABOT_API_URL,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+          Authorization: `Bearer ${accessToken}`,
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error al previsualizar documento: ${response.statusText}`);
+      }
+
+      const data = await response.text();
+      return data;
+    } catch (error) {
+      console.error('Error en previewDocument:', error);
+      throw error;
+    }
+  }, [getAccessTokenSilently, lawsuitResource]);
 
   const generate = useCallback(async (id : number, onProgress : (chunk: string) => void) => {
     try {
@@ -325,7 +352,6 @@ const createLawsuitMutation = useMutation({
       setLoading(false);
     }
   }, [getAccessTokenSilently, queryClient]);
-
   return {
   lawsuits,
   isLoadingLawsuits,
@@ -347,11 +373,13 @@ const createLawsuitMutation = useMutation({
   deleteLawsuit: deleteLawsuitMutation.mutateAsync,
   isDeletingLawsuit: deleteLawsuitMutation.isLoading,
   
-  // Exponer el lawsuitResource para uso directo en componentes
+  // Funciones de generación de documentos
+  previewDocument,
+  generate,
+    // Exponer el lawsuitResource para uso directo en componentes
   lawsuitResource,
   
   loading,
-  error,
-  generate
+  error
 };
 };

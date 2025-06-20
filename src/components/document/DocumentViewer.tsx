@@ -19,6 +19,7 @@ interface DocumentViewerProps {
   };
   versionCaseData?: LawsuitDetailResponse; // Datos del caso para la versión específica
   onSwitchToVersions?: () => void; // Nueva prop para cambiar a la pestaña de versiones
+  isFirstGeneration?: boolean; // Indica si es la primera generación (para usar streaming)
 }
 
 const DocumentViewer = ({ 
@@ -29,7 +30,8 @@ const DocumentViewer = ({
   title,
   versionInfo,
   versionCaseData,
-  onSwitchToVersions
+  onSwitchToVersions,
+  isFirstGeneration: propIsFirstGeneration
 }: DocumentViewerProps) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -125,19 +127,24 @@ const DocumentViewer = ({
       setEmail('');
     }, 1500);
   };
-  
-  // Función para ver la vista previa
+    // Función para ver la vista previa
   const togglePreview = () => {
-    if (!markdownContent.trim()) {
+    if (!markdownContent.trim() && !isGenerating) {
       toast.error('No hay contenido para mostrar en vista previa');
       return;
     }
     setIsPreviewOpen(!isPreviewOpen);
   };
 
+  // Función para abrir la vista previa (sin toggle)
+  const openPreview = () => {
+    setIsPreviewOpen(true);
+  };
+
   // Click fuera del modal para cerrar
   const handleClickOutside = (e : any) => {
-    if (e.target === e.currentTarget) {
+    // Si está generando, no permitir cerrar haciendo clic fuera
+    if (e.target === e.currentTarget && !isGenerating) {
       setIsPreviewOpen(false);
     }
   };
@@ -158,10 +165,11 @@ const DocumentViewer = ({
 
   // Determinar el título del documento
   const documentTitle = title || `Demanda: ${lawsuit?.subjectMatter || 'Documento legal'}`;
-  
-  // Determinar el estado actual
+    // Determinar el estado actual
   const currentStatus = lawsuit?.status === 'FINALIZED' ? 'Finalizado' : 
                        lawsuit?.status === 'PENDING' ? 'Pendiente' : 'En curso';
+                         // Determinar si es la primera generación (no hay versiones ni contenido o se especificó en las props)
+  const isFirstGeneration = propIsFirstGeneration !== undefined ? propIsFirstGeneration : (!versionInfo && !markdownContent.trim());
 
   return (
     <div className="bg-dark-lighter rounded-lg overflow-hidden">
@@ -187,14 +195,14 @@ const DocumentViewer = ({
             )}
           </div>
         )}
-        
-        {/* Contenido del documento */}
+          {/* Contenido del documento */}
         <div className="bg-dark p-4 rounded-md border border-gray-700 mb-4 font-mono text-sm text-gray-300 whitespace-pre-wrap max-h-96 overflow-y-auto">
-          {isGenerating ? (
+          {isGenerating && !isPreviewOpen ? (
             <div className="flex items-center justify-center h-32">
               <div className="text-center">
                 <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
                 <p className="text-gray-400">Generando documento...</p>
+                <p className="text-gray-500 text-xs mt-1">Ver en la vista previa para seguir en tiempo real</p>
               </div>
             </div>
           ) : markdownContent ? (
@@ -274,8 +282,7 @@ const DocumentViewer = ({
         </div>          
           {/* La información de la versión ahora se muestra en la parte superior del componente */}
           {/* Botones de acción */}
-        <div className="flex flex-wrap gap-3 mt-6">
-          <button
+        <div className="flex flex-wrap gap-3 mt-6">          <button
             onClick={() => {
               // Si hay versiones, usar onSwitchToVersions para ir a la página de versiones
               // De lo contrario, generar un nuevo documento
@@ -284,6 +291,8 @@ const DocumentViewer = ({
                   onSwitchToVersions();
                 }
               } else {
+                // Abrir vista previa automáticamente al generar
+                openPreview();
                 // Comportamiento original si no hay versión 1
                 onGenerateDocument();
               }
@@ -292,7 +301,9 @@ const DocumentViewer = ({
             className={`btn flex items-center gap-2 ${
               isGenerating 
                 ? 'bg-gray-600 text-gray-300 cursor-not-allowed' 
-                : 'bg-primary text-white hover:bg-primary-dark'
+                : isFirstGeneration
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-primary text-white hover:bg-primary-dark'
             }`}
           >
             {/* Mostrar icono según el estado */}
@@ -303,7 +314,7 @@ const DocumentViewer = ({
             ) : (
               <FiRefreshCw className="w-4 h-4" />
             )}
-            {isGenerating ? 'Generando...' : versionInfo ? 'Ver todas las versiones' : 'Generar documento'}
+            {isGenerating ? 'Generando...' : versionInfo ? 'Ver todas las versiones' : isFirstGeneration ? 'Generar primer documento (streaming)' : 'Generar documento'}
           </button>
           
           <button
@@ -350,29 +361,42 @@ const DocumentViewer = ({
           </div>
         )}
       </div>
-      
-      {/* Vista previa del documento (modal) */}
-      {isPreviewOpen && markdownContent && (
+        {/* Vista previa del documento (modal) */}
+      {isPreviewOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={handleClickOutside}>
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-screen overflow-auto">
             <div className="bg-gray-100 border-b p-4 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-gray-800">Vista previa del documento</h3>
-              <button 
-                onClick={togglePreview}
-                className="text-gray-500 hover:text-gray-800"
-              >
-                ✕
-              </button>
+              <h3 className="text-lg font-bold text-gray-800">
+                {isGenerating ? 'Generando documento en tiempo real...' : 'Vista previa del documento'}
+              </h3>
+              {/* Solo mostrar botón de cerrar si no está generando */}
+              {!isGenerating && (
+                <button 
+                  onClick={togglePreview}
+                  className="text-gray-500 hover:text-gray-800"
+                >
+                  ✕
+                </button>
+              )}
             </div>
             <div className="p-8">
               <div className="bg-white p-6 font-serif text-black">
-                {/* Renderizar contenido Markdown como HTML básico */}
-                <div dangerouslySetInnerHTML={{ __html: markdownContent
-                  .replace(/\n\n/g, '<br/><br/>')
-                  .replace(/\n/g, '<br/>')
-                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                }}></div>
+                {markdownContent.trim() ? (
+                  /* Renderizar contenido Markdown como HTML básico */
+                  <div dangerouslySetInnerHTML={{ __html: markdownContent
+                    .replace(/\n\n/g, '<br/><br/>')
+                    .replace(/\n/g, '<br/>')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                  }}></div>
+                ) : isGenerating ? (
+                  <div className="text-center py-10">
+                    <div className="inline-block animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mb-4"></div>
+                    <p className="text-gray-600">Generando documento, por favor espere...</p>
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No hay contenido disponible para mostrar</p>
+                )}
               </div>
             </div>
           </div>

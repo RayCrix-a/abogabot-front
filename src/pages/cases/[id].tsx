@@ -37,14 +37,14 @@ const CaseDetail = () => {
     }
   }, [router.query, id]);
     // Ya no necesitamos el evento personalizado porque redirigimos a otra página
-  
-  // Obtener datos del caso usando los nuevos hooks
+    // Obtener datos del caso usando los nuevos hooks
   const { 
     useLawsuit, 
     deleteLawsuit, 
     updateLawsuit,
     useLawsuitLastRevisions,
     useLawsuitRevisions,
+    previewDocument,
     generate,
     lawsuitResource,
     loading: isLoadingGeneration
@@ -192,17 +192,34 @@ const CaseDetail = () => {
       toast.error(`Error al actualizar el caso: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
   };
-
   // Generar documento - MEJORADO para manejar tanto vista principal como versiones
   const handleGenerateDocument = async () => {
     if (!id) return;
     
-    setMarkdownContent('');
     setIsGenerating(true);
     
-    try {      await generate(Number(id), (chunk) => {
+    try {
+      // Primero obtener la vista previa
+      if (!firstVersion && !markdownContent.trim()) {
+        // Solo muestra vista previa en la primera generación
+        try {
+          const previewContent = await previewDocument(Number(id));
+          setMarkdownContent(previewContent);
+          toast.info('Vista previa generada. Iniciando generación completa...');
+        } catch (error) {
+          console.error('Error al generar vista previa:', error);
+          // Si falla la vista previa, seguimos con la generación normal
+        }
+      } else {
+        // Si no es primera generación, limpiamos el contenido
+        setMarkdownContent('');
+      }
+      
+      // Luego generar el documento con streaming
+      await generate(Number(id), (chunk) => {
         setMarkdownContent(prev => prev + chunk);
       });
+      
       toast.success('Documento generado exitosamente');
       
     } catch (error) {
@@ -312,8 +329,7 @@ const CaseDetail = () => {
             </Link>
             )}
           </div>          {/* Contenido de la vista de documento */}
-          <div className="bg-dark-lighter rounded-lg">
-            <DocumentViewer 
+          <div className="bg-dark-lighter rounded-lg">            <DocumentViewer 
               lawsuit={lawsuit}
               content={firstVersionContent || markdownContent}
               onGenerateDocument={handleGenerateDocument}
@@ -327,6 +343,7 @@ const CaseDetail = () => {
               } : undefined}
               versionCaseData={firstVersionCaseData || undefined}
               onSwitchToVersions={() => router.push(`/cases/versions/page_version?id=${id}`)}
+              isFirstGeneration={!firstVersion && !markdownContent.trim()}
             />
           </div>
         </>
