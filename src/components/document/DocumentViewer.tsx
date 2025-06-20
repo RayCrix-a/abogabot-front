@@ -183,7 +183,7 @@ const DocumentViewer = ({
               )}
             </div>
             {versionInfo.uuid && (
-              <p className="text-gray-500 text-xs mt-1">ID: {versionInfo.uuid.substring(0, 8)}...</p>
+                <p className="text-gray-500 text-xs mt-1">ID: {versionInfo.uuid}</p>
             )}
           </div>
         )}
