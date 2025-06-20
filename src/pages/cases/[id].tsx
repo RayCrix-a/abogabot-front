@@ -59,11 +59,16 @@ const CaseDetail = () => {
   const { data: revision, isLoading: isLoadingRevision, error: revisiontError } = useLawsuitLastRevisions(Number(id));
   
   // Obtener todas las revisiones del caso
-  const { data: revisions = [], isLoading: isLoadingRevisions } = useLawsuitRevisions(Number(id));
-  // Efecto para obtener la primera versión del historial
+  const { data: revisions = [], isLoading: isLoadingRevisions } = useLawsuitRevisions(Number(id));  // Efecto para obtener la primera versión del historial
   useEffect(() => {
     const fetchFirstVersion = async () => {
-      if (!revisions.length || !id) return;
+      // Si no hay revisiones, asegurarse que estamos en la pestaña de documento
+      if (!revisions.length || !id) {
+        if (activeTab === 'versions') {
+          setActiveTab('document');
+        }
+        return;
+      }
       
       // Ordenar revisiones de más antigua a más reciente
       const sortedRevisions = [...revisions].sort((a, b) => {
@@ -112,9 +117,8 @@ const CaseDetail = () => {
         }
       }
     };
-    
-    fetchFirstVersion();
-  }, [revisions, id, getAccessTokenSilently, lawsuitResource]);
+      fetchFirstVersion();
+  }, [revisions, id, getAccessTokenSilently, lawsuitResource, activeTab]);
 
   useEffect(() => {
     // CAMBIO: Siempre mostrar la versión más reciente en la vista principal
@@ -305,8 +309,7 @@ const CaseDetail = () => {
 
       {/* CAMBIO PRINCIPAL: Solo mostrar pestañas y contenido si NO estamos editando */}
       {!isEditing && (
-        <>
-          {/* Pestañas - SIN indicadores de versión en la pestaña principal */}
+        <>          {/* Pestañas - SIN indicadores de versión en la pestaña principal */}
           <div className="flex border-b border-gray-700 mt-6 mb-4">
             <button
               className={`py-2 px-4 font-medium flex items-center ${
@@ -319,22 +322,24 @@ const CaseDetail = () => {
               <FiFile className="mr-2" />
               Documento
             </button>
-            <button
-              className={`py-2 px-4 font-medium flex items-center ${
-                activeTab === 'versions'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-              onClick={() => setActiveTab('versions')}
-            >
-              <FiClock className="mr-2" />
-              Versiones
-            </button>
-          </div>
-
-          {/* Contenido según pestaña activa */}
+            {/* Solo mostrar la pestaña de Versiones si hay al menos una versión generada */}
+            {firstVersion && (
+              <button
+                className={`py-2 px-4 font-medium flex items-center ${
+                  activeTab === 'versions'
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+                onClick={() => setActiveTab('versions')}
+              >
+                <FiClock className="mr-2" />
+                Versiones
+              </button>
+            )}
+          </div>          {/* Contenido según pestaña activa */}
           <div className="bg-dark-lighter rounded-lg">            
-            {activeTab === 'document' ? (                <DocumentViewer 
+            {activeTab === 'document' || !firstVersion ? (
+                <DocumentViewer 
                 lawsuit={lawsuit}
                 content={firstVersionContent || markdownContent}
                 onGenerateDocument={handleGenerateDocument}
