@@ -4,6 +4,7 @@ import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import DocumentVersioning from '@/components/document/DocumentVersioning';
 import EditCaseForm from '@/components/cases/EditCaseForm';
+import VersionCaseDetailsCard from '@/components/cases/VersionCaseDetailsCard';
 import { useLawsuits } from '@/hooks/useLawsuits';
 import { FiArrowLeft, FiFile } from 'react-icons/fi';
 import { toast } from 'react-toastify';
@@ -143,27 +144,19 @@ const VersionsPage = () => {
     >
       {/* Cabecera con navegación */}
       <div className="mb-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center space-x-4">            <Link href={`/cases/${id}`}>
+        <div className="flex flex-wrap items-center justify-between gap-4">          <div className="flex items-center space-x-4">            <Link href={`/cases/${id}`}>
               <button className="flex items-center text-gray-400 hover:text-white">
                 <FiArrowLeft className="mr-2" />
                 Volver al Caso
               </button>
             </Link>
-            <Link href={`/cases/${id}`}>
-              <button className="flex items-center btn-outline-primary py-1 px-3">
-                <FiFile className="mr-2" />
-                Ver Documento
-              </button>
-            </Link>
           </div>
           
-          <h1 className="text-xl font-bold text-white">{lawsuit.title || lawsuit.subjectMatter}</h1>
+
         </div>
       </div>
 
-      {/* Modo edición - Mostrar formulario de edición */}
-      {isEditing ? (
+      {/* Modo edición - Mostrar formulario de edición */}      {isEditing ? (
         <div className="bg-dark-lighter rounded-lg p-6">
           <EditCaseForm 
             caseData={lawsuit} 
@@ -173,8 +166,12 @@ const VersionsPage = () => {
           />
         </div>
       ) : (
-        /* Mostrar componente de versionado si no estamos en modo edición */
-        <DocumentVersioning
+        <>
+          {/* Detalles del documento actual */}
+          <VersionCaseDetailsCard caseData={lawsuit} />
+          
+          {/* Mostrar componente de versionado si no estamos en modo edición */}
+          <DocumentVersioning
           lawsuitId={Number(id)}
           onGenerateDocument={handleGenerateDocument}
           isGenerating={isGenerating}
@@ -203,8 +200,8 @@ const VersionsPage = () => {
           } catch (error) {
             console.error('Error al obtener datos de la versión desde el componente:', error);
           }
-        }}
-      />
+        }}      />
+        </>
       )}
     </MainLayout>
   );

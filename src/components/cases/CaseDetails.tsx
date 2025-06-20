@@ -29,8 +29,7 @@ const CaseDetails = ({
 }: CaseDetailsProps) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  
-  // Datos a mostrar - usar los datos de la versión 1 cuando estén disponibles
+    // Datos a mostrar - usar los datos de la versión 1 cuando estén disponibles (pero no para el estado que siempre debe ser el actual)
   const displayData = versionCaseData || caseData;
   
   console.log('🔍 CaseDetails render - isEditing:', isEditing);
@@ -120,7 +119,6 @@ const CaseDetails = ({
     };
     return statusMap[status] || status;
   };
-
   // Función para cambiar el estado
   const handleStatusChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     const statusMap: Record<string, LawsuitStatus> = {
@@ -152,6 +150,11 @@ const CaseDetails = ({
         'DRAFT': 'Caso guardado como borrador'
       };
       toast.success(messages[apiStatus] || 'Estado actualizado correctamente');
+      
+      // Forzar la actualización de la UI actualizando manualmente el estado en caseData
+      if (caseData) {
+        caseData.status = apiStatus;
+      }
 
     } catch (error) {
       console.error('Error al cambiar el estado:', error);
@@ -175,9 +178,8 @@ const CaseDetails = ({
     
     return statusColor[status] || 'bg-gray-700 text-gray-300';
   };
-
-  // Determinar el estado actual del caso
-  const status = getDisplayStatus(displayData.status);
+  // Determinar el estado actual del caso - SIEMPRE usar caseData (actualizado) en lugar de displayData para el estado
+  const status = getDisplayStatus(caseData.status);
 
   // RESTO DEL COMPONENTE - Solo se renderiza si NO estamos editando
   return (
@@ -255,14 +257,13 @@ const CaseDetails = ({
               <tr className="border-b border-gray-700">
                 <td className="py-2 text-gray-400">Estado</td>
                 <td className="py-2">
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-md text-sm font-medium ${getStatusColor(status)}`}>
+                  <div className="flex items-center gap-3">                    <span className={`px-3 py-1 rounded-md text-sm font-medium ${getStatusColor(status)}`}>
                       {status}
                     </span>
                     {/* Selector para cambiar estado - SIEMPRE VISIBLE */}
                     <div className="relative">
                       <select
-                        value={getDisplayStatus(caseData.status)}
+                        value={status}
                         onChange={handleStatusChange}
                         className="bg-gray-700 text-white border-none rounded-md py-1 px-2 text-sm appearance-none cursor-pointer pr-8 hover:bg-gray-600 transition-colors"
                       >

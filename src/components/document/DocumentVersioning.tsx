@@ -321,17 +321,10 @@ const DocumentVersioning = ({
                       <FiDownload className="w-3 h-3" />
                     </button>
                   </div>
-                  
-                  <div className={`text-xs px-2 py-1 rounded-full inline-block mb-2 ${getStatusColor(revision)}`}>
+                    <div className={`text-xs px-2 py-1 rounded-full inline-block mb-2 ${getStatusColor(revision)}`}>
                     {getStatusText(revision)}
-                  </div>
-                  
-                  <p className="text-gray-400 text-xs">
-                    {formatRelativeTime(revision.createdAt)}
-                  </p>
-                  
-                  <p className="text-gray-500 text-xs mt-1">
-                    ID: {revision.uuid.substring(0, 8)}...
+                  </div>                    <p className="text-gray-400 text-xs mt-1">
+                    ID: {revision.uuid}
                   </p>
                 </div>
               ))}
@@ -348,20 +341,12 @@ const DocumentVersioning = ({
         </div>
 
         {/* Vista previa de la versión seleccionada */}
-        <div className="flex-1">          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">
+        <div className="flex-1">          <div className="flex items-center justify-between mb-4">            <h3 className="text-lg font-semibold text-white">
               {selectedRevision 
                 ? `Versión ${sortedRevisions.length - sortedRevisions.findIndex(r => r.uuid === selectedRevision.uuid)}`
                 : 'Vista Previa'
               }
             </h3>
-            
-            {selectedRevision && (
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <FiClock className="w-4 h-4" />
-                {formatRelativeTime(selectedRevision.createdAt)}
-              </div>
-            )}
           </div>
 
           <div className="bg-dark border border-gray-700 rounded-lg p-4 h-80 overflow-y-auto">
@@ -399,20 +384,16 @@ const DocumentVersioning = ({
                 </div>
                 <div>
                   <span className="text-gray-400">UUID:</span>
-                  <span className="ml-2 text-white font-mono">
-                    {selectedRevision.uuid.substring(0, 16)}...
-                  </span>
+                    <span className="ml-2 text-white font-mono">
+                    <span className="ml-2 text-green-400 font-mono">
+                      {selectedRevision.uuid}
+                    </span>
+                    </span>
                 </div>
                 <div>
                   <span className="text-gray-400">Creada:</span>
                   <span className="ml-2 text-white">
                     {new Date(selectedRevision.createdAt).toLocaleString()}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Última actualización:</span>
-                  <span className="ml-2 text-white">
-                    {selectedRevision.createdAt ? new Date(selectedRevision.createdAt).toLocaleString() : 'N/A'}
                   </span>
                 </div>
               </div>
