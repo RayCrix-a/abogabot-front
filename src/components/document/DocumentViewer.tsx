@@ -18,6 +18,7 @@ interface DocumentViewerProps {
     status?: string;
   };
   versionCaseData?: LawsuitDetailResponse; // Datos del caso para la versión específica
+  onSwitchToVersions?: () => void; // Nueva prop para cambiar a la pestaña de versiones
 }
 
 const DocumentViewer = ({ 
@@ -27,7 +28,8 @@ const DocumentViewer = ({
   isGenerating = false,
   title,
   versionInfo,
-  versionCaseData
+  versionCaseData,
+  onSwitchToVersions
 }: DocumentViewerProps) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -271,11 +273,21 @@ const DocumentViewer = ({
           </div>
         </div>
           {/* La información de la versión ahora se muestra en la parte superior del componente */}
-        
-        {/* Botones de acción */}
-        <div className="flex flex-wrap gap-3 mt-6">
-          <button
-            onClick={onGenerateDocument}
+          {/* Botones de acción */}
+        <div className="flex flex-wrap gap-3 mt-6">          <button            onClick={() => {
+              // Si ya existe una versión 1, redirigir a la pestaña de versiones
+              if (versionInfo) {
+                // Usar la prop onSwitchToVersions si está disponible, de lo contrario usar el evento
+                if (onSwitchToVersions) {
+                  onSwitchToVersions();
+                } else {
+                  window.dispatchEvent(new CustomEvent('switchTab', { detail: 'versions' }));
+                }
+              } else {
+                // Comportamiento original si no hay versión 1
+                onGenerateDocument();
+              }
+            }}
             disabled={isGenerating}
             className={`btn flex items-center gap-2 ${
               isGenerating 
@@ -283,8 +295,11 @@ const DocumentViewer = ({
                 : 'bg-primary text-white hover:bg-primary-dark'
             }`}
           >
-            <FiRefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-            {isGenerating ? 'Generando...' : 'Generar nueva versión'}
+            {/* Mostrar icono solo si está generando o si ya hay una versión */}
+            {(isGenerating || versionInfo) && (
+              <FiRefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+            )}
+            {isGenerating ? 'Generando...' : versionInfo ? 'Ver todas las versiones' : 'Generar documento'}
           </button>
           
           <button

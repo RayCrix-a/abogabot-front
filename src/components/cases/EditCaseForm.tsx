@@ -35,9 +35,11 @@ const editCaseSchema = z.object({
 
 export interface EditCaseFormProps { 
   caseData: LawsuitDetailResponse,
-  onCancel: any
+  onCancel: any,
+  hasGeneratedVersions?: boolean, // Indica si ya hay versiones generadas
+  switchToVersionsTab?: () => void // Función para cambiar a la pestaña de versiones
 }
-const EditCaseForm = ({ caseData, onCancel } : EditCaseFormProps) => {
+const EditCaseForm = ({ caseData, onCancel, hasGeneratedVersions = false, switchToVersionsTab } : EditCaseFormProps) => {
   const [saving, setSaving] = useState(false);
   const [claimInput, setClaimInput] = useState('');
   const [claimsList, setClaimsList] = useState<string[]>([]);
@@ -617,13 +619,22 @@ const EditCaseForm = ({ caseData, onCancel } : EditCaseFormProps) => {
       
       // Llamada a la API
       await updateLawsuit({ id: caseData.id, data: lawsuitRequest });
-      
-      // Invalidar consultas para refrescar datos
+        // Invalidar consultas para refrescar datos
       queryClient.invalidateQueries({ queryKey: ['lawsuits'] });
       queryClient.invalidateQueries({ queryKey: ['lawsuit', caseData.id] });
       
       toast.success('Caso actualizado exitosamente');
-      onCancel(); // Cerrar formulario de edición
+      
+      // Si hay versiones generadas y existe la función para cambiar a la pestaña de versiones, redirigir
+      if (hasGeneratedVersions && switchToVersionsTab) {
+        onCancel(); // Cerrar formulario de edición
+        setTimeout(() => {
+          switchToVersionsTab(); // Cambiar a la pestaña de versiones después de un pequeño delay
+          toast.info('Puede generar una nueva versión del documento con los cambios realizados');
+        }, 300);
+      } else {
+        onCancel(); // Solo cerrar el formulario si no hay versiones o no se proporcionó la función
+      }
     } catch (error) {
       console.error('Error al actualizar caso:', error);
       toast.error(`Error al actualizar el caso: ${error && error instanceof Error ? error.message : "Error desconocido"}`);

@@ -26,6 +26,22 @@ const CaseDetail = () => {
   // CAMBIO PRINCIPAL: Mover el estado isEditing aquí
   const [isEditing, setIsEditing] = useState(false);
   
+  // Efecto para escuchar el evento personalizado switchTab
+  useEffect(() => {
+    const handleSwitchTab = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail === 'versions') {
+        setActiveTab('versions');
+      }
+    };
+    
+    window.addEventListener('switchTab', handleSwitchTab);
+    
+    return () => {
+      window.removeEventListener('switchTab', handleSwitchTab);
+    };
+  }, []);
+  
   // Obtener datos del caso usando los nuevos hooks
   const { 
     useLawsuit, 
@@ -318,8 +334,7 @@ const CaseDetail = () => {
 
           {/* Contenido según pestaña activa */}
           <div className="bg-dark-lighter rounded-lg">            
-            {activeTab === 'document' ? (              
-              <DocumentViewer 
+            {activeTab === 'document' ? (                <DocumentViewer 
                 lawsuit={lawsuit}
                 content={firstVersionContent || markdownContent}
                 onGenerateDocument={handleGenerateDocument}
@@ -332,6 +347,7 @@ const CaseDetail = () => {
                   status: 'Completado'
                 } : undefined}
                 versionCaseData={firstVersionCaseData || undefined}
+                onSwitchToVersions={() => setActiveTab('versions')}
               />
             ) : (              
             <DocumentVersioning
@@ -339,6 +355,7 @@ const CaseDetail = () => {
                 onGenerateDocument={handleGenerateDocument}
                 isGenerating={isGenerating}
                 currentCaseData={lawsuit}
+                onStartEditing={startEditing} // Añadimos la misma función de edición que usa CaseDetails
                 onFirstVersionSelect={async (version, content) => {
                   // Actualizar la primera versión cuando se obtiene desde el componente
                   setFirstVersion(version);

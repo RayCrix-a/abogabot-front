@@ -12,7 +12,8 @@ interface DocumentVersioningProps {
   onGenerateDocument: () => void;
   isGenerating: boolean;
   currentCaseData: LawsuitDetailResponse;
-  onFirstVersionSelect?: (version: TaskSummaryResponse, content: string) => void; // Nueva prop para manejar la selección de la primera versión
+  onFirstVersionSelect?: (version: TaskSummaryResponse, content: string) => void; // Prop para manejar la selección de la primera versión
+  onStartEditing?: () => void; // Prop para iniciar el modo de edición (se utiliza el mismo flujo que CaseDetails)
 }
 
 const DocumentVersioning = ({ 
@@ -20,16 +21,14 @@ const DocumentVersioning = ({
   onGenerateDocument,
   isGenerating,
   currentCaseData,
-  onFirstVersionSelect
+  onFirstVersionSelect,
+  onStartEditing
 }: DocumentVersioningProps) => {
   const { getAccessTokenSilently } = useAuth0();
   const [selectedRevision, setSelectedRevision] = useState<TaskSummaryResponse | null>(null);
   const [selectedVersionContent, setSelectedVersionContent] = useState<string>('');
   const [versionCaseData, setVersionCaseData] = useState<LawsuitDetailResponse | null>(null);
-  const [isLoadingContent, setIsLoadingContent] = useState(false);
-  const [isEditingVersion, setIsEditingVersion] = useState(false);
-  
-  const { 
+  const [isLoadingContent, setIsLoadingContent] = useState(false);  const { 
     useLawsuitRevisions, 
     lawsuitResource 
   } = useLawsuits();
@@ -195,36 +194,12 @@ const DocumentVersioning = ({
       console.error('Error al descargar versión:', error);
       toast.error('Error al descargar el documento');
     }
+  };  const handleEditVersion = () => {
+    // Usar el manejador externo de edición
+    if (onStartEditing) {
+      onStartEditing();
+    }
   };
-
-  const handleEditVersion = () => {
-    setIsEditingVersion(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditingVersion(false);
-  };
-
-  // Si estamos editando una versión, mostrar el formulario de edición
-  if (isEditingVersion && versionCaseData) {
-    return (
-      <div className="bg-dark-lighter rounded-lg p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-white mb-2">Editando Versión</h2>
-            <p className="text-gray-400">
-              Modifica los datos del caso para generar una nueva versión
-            </p>
-          </div>
-        </div>
-        
-        <EditCaseForm 
-          caseData={versionCaseData} 
-          onCancel={handleCancelEdit}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="bg-dark-lighter rounded-lg p-6">
@@ -236,9 +211,8 @@ const DocumentVersioning = ({
           </p>
         </div>
         
-        <div className="flex gap-3">
-          {/* Botón para editar la versión seleccionada */}
-          {versionCaseData && (
+        <div className="flex gap-3">          {/* Botón para editar la versión seleccionada */}
+          {versionCaseData && onStartEditing && (
             <button
               onClick={handleEditVersion}
               className="btn-secondary py-2 px-4 flex items-center gap-2"
@@ -344,11 +318,10 @@ const DocumentVersioning = ({
         </div>
 
         {/* Vista previa de la versión seleccionada */}
-        <div className="flex-1">
-          <div className="flex items-center justify-between mb-4">
+        <div className="flex-1">          <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">
               {selectedRevision 
-                ? `Versión ${sortedRevisions.findIndex(r => r.uuid === selectedRevision.uuid) + 1}`
+                ? `Versión ${sortedRevisions.length - sortedRevisions.findIndex(r => r.uuid === selectedRevision.uuid)}`
                 : 'Vista Previa'
               }
             </h3>
