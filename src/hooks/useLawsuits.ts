@@ -75,7 +75,9 @@ const createLawsuitMutation = useMutation({
       console.error('Error al actualizar demanda:', error);
       toast.error(`Error al actualizar la demanda: ${error && error instanceof Error  ? error.message : 'Error desconocido'}`);
     }
-  });  // Mutación para eliminar una demanda
+  });  
+
+  // Mutación para eliminar una demanda
   const deleteLawsuitMutation = useMutation({
     mutationFn: async (id : number) => {
       console.log('Ejecutando mutación para eliminar demanda con ID:', id);
@@ -113,11 +115,12 @@ const createLawsuitMutation = useMutation({
         queryClient.setQueryData(['lawsuits'], 
           previousLawsuits.filter(l => l.id !== deletedId)
         );
-        console.log('Estado actualizado optimistamente');
+        console.log('Estado actualizado optimisticamente');
       }
       
       return { previousLawsuits };
-    },    onSuccess: () => {
+    },    
+    onSuccess: () => {
       console.log('Eliminación exitosa, invalidando queries');
       // Importante: Usar la forma de objeto para invalidateQueries para asegurar que funcione bien con React Query v4+
       queryClient.invalidateQueries({ queryKey: ['lawsuits'] });
@@ -187,7 +190,53 @@ const createLawsuitMutation = useMutation({
   };
 
   /**
-   * Función para obtener revisiones de una demanda
+   * Función para obtener el contenido de una revisión específica
+   * @param {number} id - Identificador de la demanda
+   * @param {string} uuid - Identificador de la revisión
+   * @returns {Object} - Query result con el contenido de la revisión
+   */
+  const useLawsuitRevision = (id: number, uuid: string) => {
+    return useQuery({
+      queryKey: ['lawsuit-revision', id, uuid],
+      queryFn: async () => {
+        if (!id || !uuid) return null;
+        const accessToken = await getAccessTokenSilently();
+        const response = await lawsuitResource.getRevisionResponse(id, uuid, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
+        return await response.text();
+      },
+      enabled: !!(id && uuid)
+    });
+  };
+
+  /**
+   * Función para obtener la petición de una revisión específica
+   * @param {number} id - Identificador de la demanda
+   * @param {string} uuid - Identificador de la revisión
+   * @returns {Object} - Query result con los datos de la demanda en esa revisión
+   */
+  const useLawsuitRevisionRequest = (id: number, uuid: string) => {
+    return useQuery({
+      queryKey: ['lawsuit-revision-request', id, uuid],
+      queryFn: async () => {
+        if (!id || !uuid) return null;
+        const accessToken = await getAccessTokenSilently();
+        const response = await lawsuitResource.getRevisionRequest(id, uuid, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        }
+    });
+        return response.data;
+      },
+      enabled: !!(id && uuid)
+    });
+  };
+
+  /**
+   * Función para obtener revisiones de una demanda (mantener compatibilidad)
    * @param {number} id - Identificador de la demanda
    * @returns {string} - Query result con las revisiones
    */
@@ -219,29 +268,6 @@ const createLawsuitMutation = useMutation({
       },
       enabled: !!id,
       retry: false
-    });
-  };
-
-  /**
-   * Función para obtener una revisión específica
-   * @param {number} id - Identificador de la demanda
-   * @param {string} uuid - Identificador de la revisión
-   * @returns {Object} - Query result con la revisión
-   */
-  const useLawsuitRevision = (id: number, uuid: string) => {
-    return useQuery({
-      queryKey: ['lawsuit-revision', id, uuid],
-      queryFn: async () => {
-        if (!id || !uuid) return null;
-        const accessToken = await getAccessTokenSilently();
-        const response = await lawsuitResource.getRevisionResponse(id, uuid, {
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-        }
-    });
-        return response.data;
-      },
-      enabled: !!(id && uuid)
     });
   };
 
@@ -287,6 +313,9 @@ const createLawsuitMutation = useMutation({
         }
       }
 
+      // Invalidar las queries de revisiones para refrescar la lista
+      queryClient.invalidateQueries({ queryKey: ['lawsuit-revisions', id] });
+
       return accumulatedContent;
     } catch (error) {
       console.error('Error en generateLawsuitDocument:', error);
@@ -295,7 +324,7 @@ const createLawsuitMutation = useMutation({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getAccessTokenSilently, queryClient]);
 
   return {
   lawsuits,
@@ -305,6 +334,7 @@ const createLawsuitMutation = useMutation({
   useLawsuit,
   useLawsuitRevisions,
   useLawsuitRevision,
+  useLawsuitRevisionRequest, // Nueva función
   useLawsuitLastRevisions,
   
   // CAMBIOS: Usar mutateAsync para poder hacer await
@@ -316,6 +346,9 @@ const createLawsuitMutation = useMutation({
   
   deleteLawsuit: deleteLawsuitMutation.mutateAsync,
   isDeletingLawsuit: deleteLawsuitMutation.isLoading,
+  
+  // Exponer el lawsuitResource para uso directo en componentes
+  lawsuitResource,
   
   loading,
   error,

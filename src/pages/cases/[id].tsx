@@ -5,18 +5,18 @@ import { useQueryClient } from '@tanstack/react-query';
 import MainLayout from '@/components/layout/MainLayout';
 import CaseDetails from '@/components/cases/CaseDetails';
 import DocumentViewer from '@/components/document/DocumentViewer';
-import ChatBox from '@/components/chat/ChatBox';
+import DocumentVersioning from '@/components/document/DocumentVersioning';
 import { useLawsuits } from '@/hooks/useLawsuits';
-import { FiArrowLeft, FiFile, FiMessageCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiFile, FiClock } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { useAuth0, withAuthenticationRequired } from '@auth0/auth0-react'
 import { LawsuitDetailResponse, LawsuitRequest, LawsuitStatus } from '@/generated/api/data-contracts';
 
-export const CaseDetail = () => {
+const CaseDetail = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { id } = router.query as { id: string};
-  const [activeTab, setActiveTab] = useState('document'); // 'document' o 'chat'
+  const [activeTab, setActiveTab] = useState('document'); // 'document' o 'versions'
   const [markdownContent, setMarkdownContent] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   
@@ -37,7 +37,7 @@ export const CaseDetail = () => {
   const { data: revision, isLoading: isLoadingRevision, error: revisiontError } = useLawsuitLastRevisions(Number(id));
 
   useEffect(() => {
-    // Si el documento tiene contenido, establecerlo    
+    // CAMBIO: Siempre mostrar la versión más reciente en la vista principal
     if (revision) {
       setMarkdownContent(revision);
     }
@@ -118,7 +118,7 @@ export const CaseDetail = () => {
     }
   };
 
-  // Generar documento
+  // Generar documento - MEJORADO para manejar tanto vista principal como versiones
   const handleGenerateDocument = async () => {
     if (!id) return;
     
@@ -127,9 +127,13 @@ export const CaseDetail = () => {
     
     try {
       await generate(Number(id), (chunk) => {
-        setMarkdownContent(prev => prev + chunk);
+        // Solo actualizar el contenido en la vista principal
+        if (activeTab === 'document') {
+          setMarkdownContent(prev => prev + chunk);
+        }
       });
       toast.success('Documento generado exitosamente');
+      
     } catch (error) {
       console.error('Error al generar documento:', error);
       toast.error(`Error al generar el documento: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
@@ -208,7 +212,7 @@ export const CaseDetail = () => {
         </Link>
       </div>
 
-      {/* CAMBIO: Pasar el estado de edición como props */}
+      {/* CAMBIO: CaseDetails siempre muestra datos actuales - sin props de versión */}
       <CaseDetails 
         caseData={lawsuit} 
         onDelete={handleDeleteCase} 
@@ -222,7 +226,7 @@ export const CaseDetail = () => {
       {/* CAMBIO PRINCIPAL: Solo mostrar pestañas y contenido si NO estamos editando */}
       {!isEditing && (
         <>
-          {/* Pestañas */}
+          {/* Pestañas - SIN indicadores de versión en la pestaña principal */}
           <div className="flex border-b border-gray-700 mt-6 mb-4">
             <button
               className={`py-2 px-4 font-medium flex items-center ${
@@ -237,14 +241,14 @@ export const CaseDetail = () => {
             </button>
             <button
               className={`py-2 px-4 font-medium flex items-center ${
-                activeTab === 'chat'
+                activeTab === 'versions'
                   ? 'text-primary border-b-2 border-primary'
                   : 'text-gray-400 hover:text-white'
               }`}
-              onClick={() => setActiveTab('chat')}
+              onClick={() => setActiveTab('versions')}
             >
-              <FiMessageCircle className="mr-2" />
-              Chat
+              <FiClock className="mr-2" />
+              Versiones
             </button>
           </div>
 
@@ -252,23 +256,18 @@ export const CaseDetail = () => {
           <div className="bg-dark-lighter rounded-lg">
             {activeTab === 'document' ? (
               <DocumentViewer 
-                documentData={{
-                  title: `Demanda: ${lawsuit.subjectMatter}`,
-                  content: markdownContent,
-                  status: 'En curso'
-                }} 
                 lawsuit={lawsuit}
+                content={markdownContent}
                 onGenerateDocument={handleGenerateDocument}
+                isGenerating={isGenerating}
+                title={`Demanda: ${lawsuit.subjectMatter}`}
               />
             ) : (
-              <ChatBox 
-                caseId={id} 
-                onMessageSent={(message) => {
-                  console.log('Message sent:', message);
-                  // Handle message sending logic here
-                }}
-                  chatTitle={lawsuit.title || lawsuit.subjectMatter || 'Chat de consulta'}
-                  currentChatId="new-chat" // Agregamos esta línea obligatoria
+              <DocumentVersioning
+                lawsuitId={Number(id)}
+                onGenerateDocument={handleGenerateDocument}
+                isGenerating={isGenerating}
+                currentCaseData={lawsuit}
               />
             )}
           </div>
@@ -276,6 +275,6 @@ export const CaseDetail = () => {
       )}
     </MainLayout>
   );
-}
+};
 
-export default withAuthenticationRequired(CaseDetail)
+export default withAuthenticationRequired(CaseDetail);

@@ -1,36 +1,44 @@
 import { useState } from 'react';
 import { parseISO, format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { FiEdit, FiTrash2, FiMessageSquare } from 'react-icons/fi';
+import { FiEdit, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import EditCaseForm from './EditCaseForm';
 import { LawsuitDetailResponse, LawsuitStatus } from '@/generated/api/data-contracts';
 
 export interface CaseDetailsProps {
-  caseData: LawsuitDetailResponse,
-  onDelete: any,
-  onStatusChange: any,
-  onEdit: any,
-  isEditing: boolean,
-  onStartEditing: any,
-  onCancelEditing: any
+  caseData: LawsuitDetailResponse;
+  onDelete: () => Promise<boolean>;
+  onStatusChange: (status: LawsuitStatus) => Promise<void>;
+  onEdit: (data: any) => Promise<void>;
+  isEditing: boolean;
+  onStartEditing: () => void;
+  onCancelEditing: () => void;
 }
 
-const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEditing, onCancelEditing } : CaseDetailsProps) => {
+const CaseDetails = ({ 
+  caseData, 
+  onDelete, 
+  onStatusChange, 
+  onEdit,
+  isEditing, 
+  onStartEditing, 
+  onCancelEditing
+}: CaseDetailsProps) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  console.log('🔍 CaseDetails render - isEditing:', isEditing); // Debug log
+  console.log('🔍 CaseDetails render - isEditing:', isEditing);
   
   // IMPORTANTE: Early return INMEDIATO para modo edición
   if (isEditing) {
-    console.log('🎯 Renderizando SOLO EditCaseForm'); // Debug log
+    console.log('🎯 Renderizando SOLO EditCaseForm');
     return (
       <div className="bg-dark-lighter rounded-lg p-6">
         <EditCaseForm 
           caseData={caseData} 
           onCancel={() => {
-            console.log('📝 Cancelando edición'); // Debug log
+            console.log('📝 Cancelando edición');
             onCancelEditing();
           }} 
         />
@@ -38,10 +46,13 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
     );
   }
   
-  console.log('👁️ Renderizando vista normal (NO edición)'); // Debug log
+  console.log('👁️ Renderizando vista normal (NO edición)');
+  
+  // CAMBIO: Siempre usar datos actuales del caso (no datos de versión)
+  const displayData = caseData;
   
   // Función para formatear la fecha
-  const formatDate = (dateString : string) => {
+  const formatDate = (dateString: string) => {
     try {
       const date = parseISO(dateString);
       return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
@@ -83,14 +94,14 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
     setIsConfirmingDelete(false);
   };
 
-  // Iniciar edición - CON DEBUG
+  // Iniciar edición
   const startEditing = () => {
-    console.log('🚀 Iniciando modo edición'); // Debug log
+    console.log('🚀 Iniciando modo edición');
     onStartEditing();
   };
 
   // Obtener el estado para mostrar
-  const getDisplayStatus = (status : LawsuitStatus) => {
+  const getDisplayStatus = (status: LawsuitStatus) => {
     const statusMap = {
       'IN_PROGRESS': 'En curso',
       'PENDING': 'Pendiente',
@@ -101,15 +112,15 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
   };
 
   // Función para cambiar el estado
-  const handleStatusChange = async (event : any) => {
-    const statusMap : Record<string, LawsuitStatus> = {
+  const handleStatusChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const statusMap: Record<string, LawsuitStatus> = {
       'En curso': LawsuitStatus.IN_PROGRESS,
       'Pendiente': LawsuitStatus.PENDING,
       'Finalizado': LawsuitStatus.FINALIZED,
       'Borrador': LawsuitStatus.DRAFT
     };
     
-    const apiStatus = statusMap[(event.target.value) as string];
+    const apiStatus = statusMap[event.target.value];
     if (!apiStatus) return;
 
     try {
@@ -141,7 +152,7 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
   const getStatusColor = (status: string) => {
     if (typeof status !== 'string') return 'bg-gray-700 text-gray-300';
     
-    const statusColor : Record<string, string> = {
+    const statusColor: Record<string, string> = {
       'Finalizado': 'bg-green-600 text-white',
       'FINALIZED': 'bg-green-600 text-white',
       'Pendiente': 'bg-amber-500 text-white',
@@ -156,7 +167,7 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
   };
 
   // Determinar el estado actual del caso
-  const status = getDisplayStatus(caseData.status);
+  const status = getDisplayStatus(displayData.status);
 
   // RESTO DEL COMPONENTE - Solo se renderiza si NO estamos editando
   return (
@@ -164,9 +175,9 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">{caseData.title || 'Caso sin título'}</h1>
+          <h1 className="text-2xl font-bold text-white">{displayData.title || 'Caso sin título'}</h1>
           <p className="text-gray-400">
-            Comenzó el {formatDate(caseData.createdAt)}
+            Comenzó el {formatDate(displayData.createdAt)}
           </p>
         </div>
         
@@ -214,14 +225,6 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
               <span className="hidden sm:inline">Eliminar</span>
             </button>
           )}
-          
-          <button
-            className="btn-primary py-2 px-3 flex items-center gap-1"
-            title="Abrir chat"
-          >
-            <FiMessageSquare className="w-4 h-4" />
-            <span className="hidden sm:inline">Chat</span>
-          </button>
         </div>
       </div>
       
@@ -233,11 +236,11 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
             <tbody>
               <tr className="border-b border-gray-700">
                 <td className="py-2 text-gray-400">Tipo de procedimiento</td>
-                <td className="py-2 text-white">{caseData.proceedingType || 'No especificado'}</td>
+                <td className="py-2 text-white">{displayData.proceedingType || 'No especificado'}</td>
               </tr>
               <tr className="border-b border-gray-700">
                 <td className="py-2 text-gray-400">Materia legal</td>
-                <td className="py-2 text-white">{caseData.subjectMatter || 'No especificado'}</td>
+                <td className="py-2 text-white">{displayData.subjectMatter || 'No especificado'}</td>
               </tr>
               <tr className="border-b border-gray-700">
                 <td className="py-2 text-gray-400">Estado</td>
@@ -246,7 +249,7 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
                     <span className={`px-3 py-1 rounded-md text-sm font-medium ${getStatusColor(status)}`}>
                       {status}
                     </span>
-                    {/* Selector para cambiar estado */}                    
+                    {/* Selector para cambiar estado - SIEMPRE VISIBLE */}
                     <div className="relative">
                       <select
                         value={getDisplayStatus(caseData.status)}
@@ -267,10 +270,10 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
                   </div>
                 </td>
               </tr>
-              {caseData.institution && (
+              {displayData.institution && (
                 <tr className="border-b border-gray-700">
                   <td className="py-2 text-gray-400">Tribunal</td>
-                  <td className="py-2 text-white">{caseData.institution}</td>
+                  <td className="py-2 text-white">{displayData.institution}</td>
                 </tr>
               )}
             </tbody>
@@ -281,10 +284,10 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
           <h2 className="text-lg font-semibold mb-3 text-white">Partes involucradas</h2>
           
           {/* Demandantes */}
-          {caseData.plaintiffs && caseData.plaintiffs.length > 0 && (
+          {displayData.plaintiffs && displayData.plaintiffs.length > 0 && (
             <div className="mb-4">
               <h3 className="font-medium text-white">Demandante(s)</h3>
-              {caseData.plaintiffs.map((plaintiff, index) => (
+              {displayData.plaintiffs.map((plaintiff, index) => (
                 <div key={index} className="mb-2">
                   <p className="text-gray-300">{plaintiff.fullName}</p>
                   <p className="text-gray-400 text-xs">RUT: {plaintiff.idNumber}</p>
@@ -295,10 +298,10 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
           )}
           
           {/* Demandados */}
-          {caseData.defendants && caseData.defendants.length > 0 && (
+          {displayData.defendants && displayData.defendants.length > 0 && (
             <div>
               <h3 className="font-medium text-white">Demandado(s)</h3>
-              {caseData.defendants.map((defendant, index) => (
+              {displayData.defendants.map((defendant, index) => (
                 <div key={index} className="mb-2">
                   <p className="text-gray-300">{defendant.fullName}</p>
                   <p className="text-gray-400 text-xs">RUT: {defendant.idNumber}</p>
@@ -309,31 +312,31 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
           )}
           
           {/* Abogado */}
-          {caseData.attorneyOfRecord && (
+          {displayData.attorneyOfRecord && (
             <div className="mt-4">
               <h3 className="font-medium text-white">Abogado patrocinante</h3>
-              <p className="text-gray-300">{caseData.attorneyOfRecord.fullName}</p>
-              <p className="text-gray-400 text-xs">RUT: {caseData.attorneyOfRecord.idNumber}</p>
+              <p className="text-gray-300">{displayData.attorneyOfRecord.fullName}</p>
+              <p className="text-gray-400 text-xs">RUT: {displayData.attorneyOfRecord.idNumber}</p>
             </div>
           )}
           
           {/* Representante */}
-          {caseData.representative && (
+          {displayData.representative && (
             <div className="mt-4">
               <h3 className="font-medium text-white">Representante legal</h3>
-              <p className="text-gray-300">{caseData.representative.fullName}</p>
-              <p className="text-gray-400 text-xs">RUT: {caseData.representative.idNumber}</p>
+              <p className="text-gray-300">{displayData.representative.fullName}</p>
+              <p className="text-gray-400 text-xs">RUT: {displayData.representative.idNumber}</p>
             </div>
           )}
         </div>
       </div>
       
       {/* Peticiones al tribunal */}
-      {caseData.claims && caseData.claims.length > 0 && (
+      {displayData.claims && displayData.claims.length > 0 && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold mb-3 text-white">Peticiones al tribunal</h2>
           <ul className="bg-dark p-4 rounded-md border border-gray-700 list-disc list-inside">
-            {caseData.claims.map((claim, index) => (
+            {displayData.claims.map((claim, index) => (
               <li key={index} className="text-gray-300 mb-1">{claim}</li>
             ))}
           </ul>
@@ -344,7 +347,7 @@ const CaseDetails = ({ caseData, onDelete, onStatusChange, isEditing, onStartEdi
       <div>
         <h2 className="text-lg font-semibold mb-3 text-white">Descripción del caso (relato)</h2>
         <div className="bg-dark p-4 rounded-md border border-gray-700">
-          <p className="text-gray-300 whitespace-pre-wrap">{caseData.narrative || 'No hay descripción disponible'}</p>
+          <p className="text-gray-300 whitespace-pre-wrap">{displayData.narrative || 'No hay descripción disponible'}</p>
         </div>
       </div>
     </div>

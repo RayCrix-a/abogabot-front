@@ -1,28 +1,35 @@
 import { useState, useEffect } from 'react';
-import { FiShare2, FiEye, FiFileText } from 'react-icons/fi';
+import { FiShare2, FiEye, FiFileText, FiRefreshCw } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { Document, Paragraph, TextRun, Packer } from 'docx';
 import { LawsuitDetailResponse } from '@/generated/api/data-contracts';
 
-export interface DocumentType {
-  title: string
-  content: string,
-  status: string
+interface DocumentViewerProps {
+  lawsuit: LawsuitDetailResponse;
+  content: string;
+  onGenerateDocument: () => void;
+  isGenerating?: boolean;
+  title?: string;
 }
 
-const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument } :  {documentData : DocumentType, lawsuit : LawsuitDetailResponse, onGenerateDocument: any}) => {
+const DocumentViewer = ({ 
+  lawsuit, 
+  content,
+  onGenerateDocument,
+  isGenerating = false,
+  title 
+}: DocumentViewerProps) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [markdownContent, setMarkdownContent] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
   
   useEffect(() => {
-    // Si el documento tiene contenido, establecerlo
-    if (documentData?.content) {
-      setMarkdownContent(documentData.content);
+    // Si hay contenido, establecerlo
+    if (content) {
+      setMarkdownContent(content);
     }
-  }, [documentData]);
+  }, [content]);
   
   // Función para convertir texto a párrafos de Word
   const convertToWordParagraphs = (text : string) => {
@@ -46,7 +53,7 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument } :  {docume
 
   // Función para descargar en formato Word
   const handleDownloadWord = async () => {
-    if (!documentData) {
+    if (!markdownContent.trim()) {
       toast.error('No hay documento para descargar');
       return;
     }
@@ -67,7 +74,7 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument } :  {docume
       const url = URL.createObjectURL(blob);
       const a = window.document.createElement('a');
       a.href = url;
-      a.download = `demanda-${lawsuit?.id || 'documento'}.docx`;
+      a.download = `demanda-${lawsuit?.id || 'documento'}-${new Date().toISOString().split('T')[0]}.docx`;
       window.document.body.appendChild(a);
       a.click();
       
@@ -90,6 +97,11 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument } :  {docume
       return;
     }
     
+    if (!markdownContent.trim()) {
+      toast.error('No hay documento para compartir');
+      return;
+    }
+    
     toast.info(`Compartiendo documento con ${email}...`);
     // Aquí iría la lógica real para compartir por email
     setTimeout(() => {
@@ -101,6 +113,10 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument } :  {docume
   
   // Función para ver la vista previa
   const togglePreview = () => {
+    if (!markdownContent.trim()) {
+      toast.error('No hay contenido para mostrar en vista previa');
+      return;
+    }
     setIsPreviewOpen(!isPreviewOpen);
   };
 
@@ -108,37 +124,6 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument } :  {docume
   const handleClickOutside = (e : any) => {
     if (e.target === e.currentTarget) {
       setIsPreviewOpen(false);
-    }
-  };
-
-  // Función para generar un nuevo documento
-  const handleGenerateDocument = async () => {
-    if (!lawsuit?.id) {
-      toast.error('No hay una demanda válida para generar el documento');
-      return;
-    }
-    
-    // Limpiar completamente el contenido antes de generar
-    setMarkdownContent('');
-    setIsGenerating(true);
-    setMarkdownContent('Generando documento...\n');
-    // Abrir vista previa inmediatamente
-    setIsPreviewOpen(true);
-    
-    try {
-      console.log(`Iniciando generación para demanda ID: ${lawsuit.id}`);
-      
-      // Función para manejar cada chunk del stream
-      const handleChunk = (chunk : string) => {
-        setMarkdownContent(prevContent => prevContent + chunk);
-      };
-      
-      await onGenerateDocument(lawsuit.id, handleChunk);
-    } catch (error) {
-      console.error('Error al generar el documento:', error);
-      setMarkdownContent('Error al generar el documento. Por favor, intenta de nuevo.');
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -155,99 +140,118 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument } :  {docume
     }
   };
 
+  // Determinar el título del documento
+  const documentTitle = title || `Demanda: ${lawsuit?.subjectMatter || 'Documento legal'}`;
+  
+  // Determinar el estado actual
+  const currentStatus = lawsuit?.status === 'FINALIZED' ? 'Finalizado' : 
+                       lawsuit?.status === 'PENDING' ? 'Pendiente' : 'En curso';
+
   return (
     <div className="bg-dark-lighter rounded-lg overflow-hidden">
       <div className="p-5">
-        <h2 className="text-xl font-bold mb-4">{documentData?.title || 'Documento de demanda'}</h2>
+        <h2 className="text-xl font-bold mb-4">{documentTitle}</h2>
         
         {/* Contenido del documento */}
         <div className="bg-dark p-4 rounded-md border border-gray-700 mb-4 font-mono text-sm text-gray-300 whitespace-pre-wrap max-h-96 overflow-y-auto">
           {isGenerating ? (
-            <div>
-              {markdownContent}
-              <div className="animate-pulse mt-2">▋</div>
+            <div className="flex items-center justify-center h-32">
+              <div className="text-center">
+                <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
+                <p className="text-gray-400">Generando documento...</p>
+              </div>
             </div>
+          ) : markdownContent ? (
+            markdownContent
           ) : (
-            markdownContent || 'No hay contenido para mostrar. Genera un documento primero.'
+            <div className="flex items-center justify-center h-32">
+              <div className="text-center">
+                <FiFileText className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                <p className="text-gray-500">No hay contenido para mostrar</p>
+                <p className="text-gray-600 text-xs mt-1">Genera un documento para ver el contenido aquí</p>
+              </div>
+            </div>
           )}
         </div>
         
         {/* Información del documento */}
-        {documentData && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Detalles del documento</h3>
-              <table className="w-full">
-                <tbody>
-                  <tr className="border-b border-gray-700">
-                    <td className="py-2 text-gray-400">Tipo de procedimiento</td>
-                    <td className="py-2 text-white">{lawsuit?.proceedingType || 'No especificado'}</td>
-                  </tr>
-                  <tr className="border-b border-gray-700">
-                    <td className="py-2 text-gray-400">Materia</td>
-                    <td className="py-2 text-white">{lawsuit?.subjectMatter || 'No especificado'}</td>
-                  </tr>
-                  <tr className="border-b border-gray-700">
-                    <td className="py-2 text-gray-400">Estado</td>
-                    <td className="py-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(documentData.status || 'En curso')}`}>
-                        {documentData.status || 'En curso'}
-                      </span>
-                    </td>
-                  </tr>
-                  <tr className="border-b border-gray-700">
-                    <td className="py-2 text-gray-400">Fecha creación</td>
-                    <td className="py-2 text-white">
-                      {lawsuit?.createdAt ? new Date(lawsuit.createdAt).toLocaleDateString() : 'No disponible'}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Partes involucradas</h3>
-              <div className="space-y-3">
-                {lawsuit?.plaintiffs && lawsuit.plaintiffs.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-white">Demandante(s):</h4>
-                    <ul className="list-disc list-inside text-gray-400">
-                      {lawsuit.plaintiffs.map((plaintiff, idx) => (
-                        <li key={idx}>{plaintiff.fullName}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {lawsuit?.defendants && lawsuit.defendants.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-white">Demandado(s):</h4>
-                    <ul className="list-disc list-inside text-gray-400">
-                      {lawsuit.defendants.map((defendant, idx) => (
-                        <li key={idx}>{defendant.fullName}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <h3 className="text-lg font-semibold mb-3">Detalles del documento</h3>
+            <table className="w-full">
+              <tbody>
+                <tr className="border-b border-gray-700">
+                  <td className="py-2 text-gray-400">Tipo de procedimiento</td>
+                  <td className="py-2 text-white">{lawsuit?.proceedingType || 'No especificado'}</td>
+                </tr>
+                <tr className="border-b border-gray-700">
+                  <td className="py-2 text-gray-400">Materia</td>
+                  <td className="py-2 text-white">{lawsuit?.subjectMatter || 'No especificado'}</td>
+                </tr>
+                <tr className="border-b border-gray-700">
+                  <td className="py-2 text-gray-400">Estado</td>
+                  <td className="py-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(currentStatus)}`}>
+                      {currentStatus}
+                    </span>
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-700">
+                  <td className="py-2 text-gray-400">Fecha creación</td>
+                  <td className="py-2 text-white">
+                    {lawsuit?.createdAt ? new Date(lawsuit.createdAt).toLocaleDateString() : 'No disponible'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold mb-3">Partes involucradas</h3>
+            <div className="space-y-3">
+              {lawsuit?.plaintiffs && lawsuit.plaintiffs.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-white">Demandante(s):</h4>
+                  <ul className="list-disc list-inside text-gray-400">
+                    {lawsuit.plaintiffs.map((plaintiff, idx) => (
+                      <li key={idx}>{plaintiff.fullName}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {lawsuit?.defendants && lawsuit.defendants.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-white">Demandado(s):</h4>
+                  <ul className="list-disc list-inside text-gray-400">
+                    {lawsuit.defendants.map((defendant, idx) => (
+                      <li key={idx}>{defendant.fullName}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
-        )}
+        </div>
         
         {/* Botones de acción */}
         <div className="flex flex-wrap gap-3 mt-6">
           <button
-            onClick={handleGenerateDocument}
-            disabled={isGenerating || !lawsuit?.id}
-            className="btn flex items-center gap-2 bg-primary text-white hover:bg-primary-dark"
+            onClick={onGenerateDocument}
+            disabled={isGenerating}
+            className={`btn flex items-center gap-2 ${
+              isGenerating 
+                ? 'bg-gray-600 text-gray-300 cursor-not-allowed' 
+                : 'bg-primary text-white hover:bg-primary-dark'
+            }`}
           >
-            <FiEye className="w-4 h-4" />
-            {isGenerating ? 'Generando...' : 'Generar documento'}
+            <FiRefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+            {isGenerating ? 'Generando...' : 'Generar nueva versión'}
           </button>
           
           <button
             onClick={togglePreview}
-            disabled={!markdownContent}
-            className="btn flex items-center gap-2 bg-blue-900 text-blue-300 hover:bg-blue-800"
+            disabled={!markdownContent.trim() || isGenerating}
+            className="btn flex items-center gap-2 bg-blue-900 text-blue-300 hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FiEye className="w-4 h-4" />
             Vista previa
@@ -255,8 +259,8 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument } :  {docume
           
           <button
             onClick={handleDownloadWord}
-            disabled={!markdownContent}
-            className="btn flex items-center gap-2 bg-green-900 text-green-300 hover:bg-green-800"
+            disabled={!markdownContent.trim() || isGenerating}
+            className="btn flex items-center gap-2 bg-green-900 text-green-300 hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FiFileText className="w-4 h-4" />
             Descargar Word
@@ -264,13 +268,29 @@ const DocumentViewer = ({ documentData, lawsuit, onGenerateDocument } :  {docume
           
           <button
             onClick={() => setShowShareModal(true)}
-            disabled={!markdownContent}
-            className="btn flex items-center gap-2 bg-purple-900 text-purple-300 hover:bg-purple-800"
+            disabled={!markdownContent.trim() || isGenerating}
+            className="btn flex items-center gap-2 bg-purple-900 text-purple-300 hover:bg-purple-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FiShare2 className="w-4 h-4" />
             Compartir
           </button>
         </div>
+
+        {/* Mensaje informativo si no hay contenido */}
+        {!markdownContent.trim() && !isGenerating && (
+          <div className="mt-4 p-4 bg-blue-900/20 border border-blue-700 rounded-lg">
+            <div className="flex items-start gap-3">
+              <FiFileText className="w-5 h-5 text-blue-400 mt-0.5" />
+              <div>
+                <h4 className="text-blue-300 font-medium">¿Cómo generar tu documento?</h4>
+                <p className="text-blue-200 text-sm mt-1">
+                  Haz clic en "Generar nueva versión" para crear el documento legal basado en los datos del caso. 
+                  Cada generación creará una nueva versión que podrás ver en la pestaña "Versiones".
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Vista previa del documento (modal) */}
