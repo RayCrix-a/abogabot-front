@@ -5,8 +5,7 @@ module.exports = {
     './src/components/**/*.{js,ts,jsx,tsx}',
     './src/app/**/*.{js,ts,jsx,tsx}',
   ],
-  theme: {
-    extend: {
+  theme: {    extend: {
       colors: {
         primary: {
           DEFAULT: '#0095ff',
@@ -27,6 +26,10 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
+      },
+      animation: {
+        'spin-slow': 'spin 3s linear infinite',
+        'bounce-slow': 'bounce 2s infinite',
       },
     },
   },
