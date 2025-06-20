@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, ReactNode } from 'react';
 import { FiMessageCircle, FiTrash2, FiPlus, FiArrowLeft, FiArrowRight } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import { formatRelativeTime } from '@/utils/dateUtils';
 
 // Interfaz actualizada para el objeto Chat desde la API
 interface Chat {
@@ -51,21 +52,6 @@ const ChatLayout = ({
   useEffect(() => {
     localStorage.setItem('rightSidebarOpen', rightSidebarOpen.toString());
   }, [rightSidebarOpen]);
-
-  const formatTimestamp = (timestamp: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - timestamp.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (days > 0) {
-      return `${days} día${days > 1 ? 's' : ''} atrás`;
-    } else if (hours > 0) {
-      return `${hours} hora${hours > 1 ? 's' : ''} atrás`;
-    } else {
-      return 'Hace poco';
-    }
-  };
 
   const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -126,7 +112,8 @@ const ChatLayout = ({
             
             {/* Controles del header */}
             <div className="flex items-center space-x-2">
-              {/* Botón para abrir el sidebar derecho - Solo visible cuando está cerrado */}              {!rightSidebarOpen && (
+              {/* Botón para abrir el sidebar derecho - Solo visible cuando está cerrado */}              
+              {!rightSidebarOpen && (
                 <button
                   onClick={toggleRightSidebar}
                   className="p-2 text-gray-400 hover:text-white hover:bg-dark-light rounded-md transition-colors"
@@ -169,7 +156,8 @@ const ChatLayout = ({
               <h2 className="text-lg font-semibold text-white flex items-center">
                 <FiMessageCircle className="mr-2 w-5 h-5" />
                 Historial
-              </h2>                <button
+              </h2>                
+              <button
                 onClick={toggleRightSidebar}
                 className="p-2 text-gray-400 hover:text-gray-300 hover:bg-gray-400/10 rounded-md transition-colors"
                 title="Contraer historial"
@@ -235,7 +223,8 @@ const ChatLayout = ({
                     )}
                     
                     <div className="flex justify-between items-center text-xs text-gray-500">
-                      <span>{formatTimestamp(chat.timestamp)}</span>
+                      {/* CAMBIO PRINCIPAL: Usar tiempo relativo en hora de Chile */}
+                      <span>{formatRelativeTime(chat.timestamp)}</span>
                       {chat.messageCount > 0 && (
                         <span className="bg-dark/50 px-2 py-1 rounded-full">
                           {chat.messageCount} mensaje{chat.messageCount !== 1 ? 's' : ''}
@@ -278,7 +267,8 @@ const ChatLayout = ({
                     <p className="text-xs text-gray-600 mt-1">
                       Desplázate para ver más
                     </p>
-                  )}                  {/* Mostrar currentChatId actual - Refleja el ID de sesión actual */}
+                  )}                  
+                  {/* Mostrar currentChatId actual - Refleja el ID de sesión actual */}
                   <p className="text-xs text-gray-500 mt-1 flex items-center justify-center gap-1">
                     <span>ID de sesión:</span>
                     {currentChatId === 'new-chat' ? (

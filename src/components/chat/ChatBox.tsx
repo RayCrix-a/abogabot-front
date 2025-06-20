@@ -1,3 +1,4 @@
+// src/components/chat/ChatBox.tsx
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import ChatMessage from './ChatMessage';
@@ -75,16 +76,35 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
       toast.error('Error al cargar el historial del chat');
     }
   }, [messagesError]);
+
+  /**
+   * SOLUCIÓN SIMPLE: Crear timestamp UTC que represente la hora actual de Chile
+   * El servidor ya maneja bien los timestamps, solo necesitamos simular ser el servidor
+   */
+  const createConsistentTimestamp = (): string => {
+    // Obtener la hora actual de Chile
+    const now = new Date();
+    const currentMonth = now.getUTCMonth() + 1;
+    const chileOffsetHours = (currentMonth >= 3 && currentMonth <= 9) ? -4 : -3;
+    
+    // Crear timestamp que represente la hora de Chile en formato UTC
+    // Esto significa: "qué hora UTC corresponde a la hora actual de Chile"
+    const utcTime = new Date();
+    utcTime.setUTCHours(utcTime.getUTCHours() - chileOffsetHours);
+    
+    return utcTime.toISOString();
+  };
+
   // Función para enviar un nuevo mensaje con sessionId explícito
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isSendingMessage) return;
 
-    // Crear mensaje del usuario inmediatamente para UI responsiva
+    // SOLUCIÓN: Usar timestamp que se mostrará consistentemente
     const userMessage: Message = {
       id: Date.now(),
       content,
       sender: 'user',
-      timestamp: new Date().toISOString()
+      timestamp: createConsistentTimestamp() // Timestamp consistente con Chile
     };
     
     setMessages(prev => [...prev, userMessage]);
@@ -92,14 +112,17 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
     
     if (onMessageSent) {
       onMessageSent(content);
-    }    try {
+    }    
+    
+    try {
       // Si estamos en un nuevo chat, forzar un refetch después de enviar el mensaje
       // para asegurar que el nuevo sessionId se refleje en la UI
       const isNewChatSession = effectiveCurrentChatId === 'new-chat';
-      const response = await sendMessage(content, effectiveCurrentChatId);      // Si era un chat nuevo y tenemos una respuesta con sessionId, seleccionar ese chat
+      const response = await sendMessage(content, effectiveCurrentChatId);      
+
+      // Si era un chat nuevo y tenemos una respuesta con sessionId, seleccionar ese chat
       // Esto mantendrá al usuario en la misma conversación después de crear un nuevo chat
       if (isNewChatSession && response && response.sessionId) {
-
         
         // SOLUCIÓN DIRECTA: Enviar comando de selección inmediatamente
         if (onMessageSent) {
@@ -123,7 +146,7 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
           id: Date.now() + 1,
           content: response.answer,
           sender: 'bot',
-          timestamp: response.createdAt
+          timestamp: response.createdAt // Este ya viene del servidor en UTC
         };
         
         setMessages(prev => [...prev, botMessage]);
@@ -139,7 +162,7 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
         id: Date.now() + 1,
         content: 'Lo siento, ha ocurrido un error. Por favor, intenta nuevamente.',
         sender: 'bot',
-        timestamp: new Date().toISOString(),
+        timestamp: createConsistentTimestamp(), // Timestamp consistente para errores
         isError: true
       };
       
@@ -163,7 +186,7 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
     id: 0,
     content: 'Hola, soy AbogaBot. Estoy aquí para ayudarte con tus consultas legales. ¿En qué puedo asistirte hoy?',
     sender: 'bot',
-    timestamp: new Date().toISOString()
+    timestamp: createConsistentTimestamp() // Timestamp consistente para mensaje de bienvenida
   };
 
   // Determinar qué mensajes mostrar
@@ -243,7 +266,8 @@ const ChatBox = ({ onMessageSent, chatTitle, currentChatId: propCurrentChatId }:
           </>
         )}
       </div>
-        {/* Entrada de texto */}
+      
+      {/* Entrada de texto */}
       <div className="p-4 border-t border-gray-700 chat-input-container">
         <ChatInput 
           onSendMessage={handleSendMessage} 

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useAuth0 } from '@auth0/auth0-react';
 import { chatResource } from '@/lib/apiClient';
+import { convertUTCToChileTime } from '@/utils/dateUtils';
 import { 
   ChatPrompt, 
   ChatLastAnswerResponse, 
@@ -133,15 +134,20 @@ export const useChatLegal = () => {
   });
 
   // Convertir datos de la API al formato esperado por los componentes
-  const chatHistory: Chat[] = (chatListResponse?.results || []).map((apiChat: ChatSummaryResponse) => ({
-    id: apiChat.sessionId,
-    title: apiChat.title,
-    lastMessage: '',
-    timestamp: new Date(apiChat.createdAt),
-    messageCount: 0,
-    status: 'active',
-    createdAt: new Date(apiChat.createdAt)
-  }));
+  // CAMBIO: Convertir fechas UTC a hora de Chile
+  const chatHistory: Chat[] = (chatListResponse?.results || []).map((apiChat: ChatSummaryResponse) => {
+    const chileCreatedAt = convertUTCToChileTime(apiChat.createdAt);
+    
+    return {
+      id: apiChat.sessionId,
+      title: apiChat.title,
+      lastMessage: '',
+      timestamp: chileCreatedAt, // Usar fecha convertida a Chile
+      messageCount: 0,
+      status: 'active',
+      createdAt: chileCreatedAt // Usar fecha convertida a Chile
+    };
+  });
 
   // Función para iniciar un nuevo chat
   const startNewChat = useCallback(async (initialMessage?: string): Promise<string | null> => {
@@ -165,6 +171,7 @@ export const useChatLegal = () => {
       setIsLoading(false);
     }
   }, [createChatMutation]);
+
   // Función para seleccionar un chat existente
   const selectChat = useCallback((chatId: string) => {
     if (!chatId) {
@@ -188,12 +195,9 @@ export const useChatLegal = () => {
     const chat = chatHistory.find(c => c.id === chatId);
     
     if (!chat) {
-     // console.warn('Chat no encontrado en historial:', chatId);
-     
       // A pesar de no encontrarlo, intentamos seleccionarlo
       // ya que podría ser un chat recién creado que aún no aparece en el historial
-
-      //console.log('Forzando selección de chat aunque no esté en el historial:', chatId);
+      console.log('Forzando selección de chat aunque no esté en el historial:', chatId);
       setCurrentChatId(chatId);
       
       // Invalidar las consultas para forzar una actualización del historial
@@ -213,7 +217,11 @@ export const useChatLegal = () => {
 
     try {
       setIsLoading(true);
-      setError(null);      const targetSessionId = explicitSessionId !== undefined ? explicitSessionId : currentChatId;      if (!targetSessionId || targetSessionId === 'new-chat') {
+      setError(null);
+      
+      const targetSessionId = explicitSessionId !== undefined ? explicitSessionId : currentChatId;
+
+      if (!targetSessionId || targetSessionId === 'new-chat') {
         // Estamos creando un nuevo chat
         const result = await createChatMutation.mutateAsync(message);
         
@@ -222,18 +230,12 @@ export const useChatLegal = () => {
         
         // Actualizar el estado de inmediato antes de cualquier operación async
         setCurrentChatId(newSessionId);
-          // Crear una estructura temporal para el nuevo chat y actualizar el historial local
-        // Esto ayuda a que la UI muestre el nuevo chat inmediatamente sin esperar a la API
-        const tempNewChat = {
-          sessionId: newSessionId,
-          title: 'Nueva conversación', 
-          createdAt: new Date().toISOString()
-        };
         
         // Invalidar las consultas para forzar una actualización del historial
         queryClient.invalidateQueries({ queryKey: ['chats'] });
         queryClient.invalidateQueries({ queryKey: ['chat-messages', newSessionId] });
-          // Forzar refresco inmediato del historial de chats
+        
+        // Forzar refresco inmediato del historial de chats
         try {
           await queryClient.refetchQueries({ queryKey: ['chats'], type: 'active' });
         } catch (err) {
@@ -256,7 +258,7 @@ export const useChatLegal = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentChatId, createChatMutation, continueChatMutation]);
+  }, [currentChatId, createChatMutation, continueChatMutation, queryClient]);
 
   // Función para eliminar un chat
   const deleteChat = useCallback(async (chatId: string) => {
@@ -285,12 +287,13 @@ export const useChatLegal = () => {
   }, [currentChatId, queryClient]);
 
   // Función para convertir mensajes de API a formato local
+  // CAMBIO: Los timestamps ya vienen como strings UTC, no necesitamos convertir aquí
   const convertApiMessagesToLocal = useCallback((apiMessages: ChatHistoryMessage[]): Message[] => {
     return apiMessages.map((msg, index) => ({
       id: index + 1,
       content: msg.content,
       sender: msg.role === 'human' ? 'user' : 'bot',
-      timestamp: msg.createdAt,
+      timestamp: msg.createdAt, // Mantenemos como string UTC para convertir en el componente
       isError: false
     }));
   }, []);

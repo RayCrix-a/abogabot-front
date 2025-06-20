@@ -1,5 +1,4 @@
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { formatSmartMessageTime } from '@/utils/dateUtils';
 
 export interface Message {
   id: number;
@@ -15,35 +14,6 @@ interface ChatMessageProps {
 
 const ChatMessage = ({ message }: ChatMessageProps) => {
   const isBot = message.sender === 'bot';
-  
-  // Formatear la fecha del mensaje
-  const formatMessageTime = (timestamp: string) => {
-    if (!timestamp) return '';
-    
-    try {
-      // Manejar diferentes formatos de fecha que puede devolver la API
-      let date: Date;
-      
-      // Si es formato ISO completo
-      if (timestamp.includes('T')) {
-        date = new Date(timestamp);
-      } else {
-        // Si es formato "2025-06-16 00:09:56"
-        date = new Date(timestamp.replace(' ', 'T'));
-      }
-      
-      // Verificar si la fecha es válida
-      if (isNaN(date.getTime())) {
-        console.warn('Fecha inválida:', timestamp);
-        return '';
-      }
-      
-      return format(date, 'HH:mm', { locale: es });
-    } catch (error) {
-      console.error('Error al formatear fecha:', error, timestamp);
-      return '';
-    }
-  };
   
   return (
     <div 
@@ -76,9 +46,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           {message.content}
         </div>
         
-        {/* Timestamp */}
+        {/* Timestamp - Ahora usando hora de Chile */}
         <div className="text-xs text-right mt-1 opacity-70">
-          {formatMessageTime(message.timestamp)}
+          {formatSmartMessageTime(message.timestamp)}
         </div>
       </div>
       
