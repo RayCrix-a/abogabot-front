@@ -14,6 +14,7 @@ export interface CaseDetailsProps {
   isEditing: boolean;
   onStartEditing: () => void;
   onCancelEditing: () => void;
+  versionCaseData?: LawsuitDetailResponse; // Datos del caso para la versión 1
 }
 
 const CaseDetails = ({ 
@@ -23,10 +24,14 @@ const CaseDetails = ({
   onEdit,
   isEditing, 
   onStartEditing, 
-  onCancelEditing
+  onCancelEditing,
+  versionCaseData
 }: CaseDetailsProps) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Datos a mostrar - usar los datos de la versión 1 cuando estén disponibles
+  const displayData = versionCaseData || caseData;
   
   console.log('🔍 CaseDetails render - isEditing:', isEditing);
   
@@ -49,7 +54,6 @@ const CaseDetails = ({
   console.log('👁️ Renderizando vista normal (NO edición)');
   
   // CAMBIO: Siempre usar datos actuales del caso (no datos de versión)
-  const displayData = caseData;
   
   // Función para formatear la fecha
   const formatDate = (dateString: string) => {

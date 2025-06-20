@@ -12,13 +12,15 @@ interface DocumentVersioningProps {
   onGenerateDocument: () => void;
   isGenerating: boolean;
   currentCaseData: LawsuitDetailResponse;
+  onFirstVersionSelect?: (version: TaskSummaryResponse, content: string) => void; // Nueva prop para manejar la selección de la primera versión
 }
 
 const DocumentVersioning = ({ 
   lawsuitId, 
   onGenerateDocument,
   isGenerating,
-  currentCaseData
+  currentCaseData,
+  onFirstVersionSelect
 }: DocumentVersioningProps) => {
   const { getAccessTokenSilently } = useAuth0();
   const [selectedRevision, setSelectedRevision] = useState<TaskSummaryResponse | null>(null);
@@ -50,7 +52,23 @@ const DocumentVersioning = ({
       const latestRevision = sortedRevisions[0];
       handleVersionSelect(latestRevision);
     }
-  }, [sortedRevisions]);
+    
+    // Si existe la función onFirstVersionSelect y hay revisiones, obtener la primera versión (más antigua)
+    if (onFirstVersionSelect && sortedRevisions.length > 0) {
+      const oldestRevisions = [...sortedRevisions].sort((a, b) => {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+      
+      const firstVersion = oldestRevisions[0];
+      if (firstVersion) {
+        getRevisionContent(firstVersion).then(content => {
+          if (content && onFirstVersionSelect) {
+            onFirstVersionSelect(firstVersion, content);
+          }
+        });
+      }
+    }
+  }, [sortedRevisions, onFirstVersionSelect]);
 
   // Refrescar revisiones después de generar un documento
   useEffect(() => {
@@ -60,6 +78,28 @@ const DocumentVersioning = ({
       }, 1000);
     }
   }, [isGenerating, refetchRevisions]);
+  
+  // Función para obtener el contenido de una revisión
+  const getRevisionContent = async (revision: TaskSummaryResponse): Promise<string> => {
+    try {
+      const accessToken = await getAccessTokenSilently();
+      
+      const contentResponse = await lawsuitResource.getRevisionResponse(
+        lawsuitId, 
+        revision.uuid,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          }
+        }
+      );
+      
+      return await contentResponse.text();
+    } catch (error) {
+      console.error('Error al obtener datos de la versión:', error);
+      return '';
+    }
+  };
 
   const handleVersionSelect = async (revision: TaskSummaryResponse) => {
     if (selectedRevision?.uuid === revision.uuid) return;

@@ -10,7 +10,7 @@ import { useLawsuits } from '@/hooks/useLawsuits';
 import { FiArrowLeft, FiFile, FiClock } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { useAuth0, withAuthenticationRequired } from '@auth0/auth0-react'
-import { LawsuitDetailResponse, LawsuitRequest, LawsuitStatus } from '@/generated/api/data-contracts';
+import { LawsuitDetailResponse, LawsuitRequest, LawsuitStatus, TaskSummaryResponse } from '@/generated/api/data-contracts';
 
 const CaseDetail = () => {
   const router = useRouter();
@@ -19,6 +19,9 @@ const CaseDetail = () => {
   const [activeTab, setActiveTab] = useState('document'); // 'document' o 'versions'
   const [markdownContent, setMarkdownContent] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [firstVersion, setFirstVersion] = useState<TaskSummaryResponse | null>(null);
+  const [firstVersionContent, setFirstVersionContent] = useState('');
+  const [firstVersionCaseData, setFirstVersionCaseData] = useState<LawsuitDetailResponse | null>(null);
   
   // CAMBIO PRINCIPAL: Mover el estado isEditing aquí
   const [isEditing, setIsEditing] = useState(false);
@@ -29,12 +32,73 @@ const CaseDetail = () => {
     deleteLawsuit, 
     updateLawsuit,
     useLawsuitLastRevisions,
+    useLawsuitRevisions,
     generate,
+    lawsuitResource,
     loading: isLoadingGeneration
   } = useLawsuits();
   
+  const { getAccessTokenSilently } = useAuth0();
   const { data: lawsuit, isLoading: isLoadingLawsuit, error: lawsuitError } = useLawsuit(Number(id));
   const { data: revision, isLoading: isLoadingRevision, error: revisiontError } = useLawsuitLastRevisions(Number(id));
+  
+  // Obtener todas las revisiones del caso
+  const { data: revisions = [], isLoading: isLoadingRevisions } = useLawsuitRevisions(Number(id));
+  // Efecto para obtener la primera versión del historial
+  useEffect(() => {
+    const fetchFirstVersion = async () => {
+      if (!revisions.length || !id) return;
+      
+      // Ordenar revisiones de más antigua a más reciente
+      const sortedRevisions = [...revisions].sort((a, b) => {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+      
+      // Obtener la revisión más antigua (la primera versión)
+      const oldestRevision = sortedRevisions[0];
+      if (oldestRevision) {
+        setFirstVersion(oldestRevision);
+        
+        try {
+          const accessToken = await getAccessTokenSilently();
+          
+          // Obtener el contenido de la primera versión
+          const contentResponse = await lawsuitResource.getRevisionResponse(
+            Number(id), 
+            oldestRevision.uuid,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              }
+            }
+          );
+          
+          const content = await contentResponse.text();
+          setFirstVersionContent(content);
+          
+          // Obtener los datos del caso en la primera versión
+          const requestResponse = await lawsuitResource.getRevisionRequest(
+            Number(id), 
+            oldestRevision.uuid,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              }
+            }
+          );
+          
+          if (requestResponse.data) {
+            console.log("Datos de primera versión obtenidos:", requestResponse.data);
+            setFirstVersionCaseData(requestResponse.data);
+          }
+        } catch (error) {
+          console.error('Error al obtener datos de la primera versión:', error);
+        }
+      }
+    };
+    
+    fetchFirstVersion();
+  }, [revisions, id, getAccessTokenSilently, lawsuitResource]);
 
   useEffect(() => {
     // CAMBIO: Siempre mostrar la versión más reciente en la vista principal
@@ -212,8 +276,7 @@ const CaseDetail = () => {
         </Link>
       </div>
 
-      {/* CAMBIO: CaseDetails siempre muestra datos actuales - sin props de versión */}
-      <CaseDetails 
+      {/* CAMBIO: CaseDetails siempre muestra datos actuales - sin props de versión */}      <CaseDetails 
         caseData={lawsuit} 
         onDelete={handleDeleteCase} 
         onStatusChange={handleStatusChange}
@@ -221,6 +284,7 @@ const CaseDetail = () => {
         isEditing={isEditing}
         onStartEditing={startEditing}
         onCancelEditing={cancelEditing}
+        versionCaseData={firstVersionCaseData || undefined}
       />
 
       {/* CAMBIO PRINCIPAL: Solo mostrar pestañas y contenido si NO estamos editando */}
@@ -253,21 +317,53 @@ const CaseDetail = () => {
           </div>
 
           {/* Contenido según pestaña activa */}
-          <div className="bg-dark-lighter rounded-lg">
-            {activeTab === 'document' ? (
+          <div className="bg-dark-lighter rounded-lg">            
+            {activeTab === 'document' ? (              
               <DocumentViewer 
                 lawsuit={lawsuit}
-                content={markdownContent}
+                content={firstVersionContent || markdownContent}
                 onGenerateDocument={handleGenerateDocument}
                 isGenerating={isGenerating}
-                title={`Demanda: ${lawsuit.subjectMatter}`}
+                title={`Demanda: ${lawsuit?.subjectMatter}`}
+                versionInfo={firstVersion ? {
+                  version: 1,
+                  createdAt: firstVersion.createdAt,
+                  uuid: firstVersion.uuid,
+                  status: 'Completado'
+                } : undefined}
+                versionCaseData={firstVersionCaseData || undefined}
               />
-            ) : (
-              <DocumentVersioning
+            ) : (              
+            <DocumentVersioning
                 lawsuitId={Number(id)}
                 onGenerateDocument={handleGenerateDocument}
                 isGenerating={isGenerating}
                 currentCaseData={lawsuit}
+                onFirstVersionSelect={async (version, content) => {
+                  // Actualizar la primera versión cuando se obtiene desde el componente
+                  setFirstVersion(version);
+                  setFirstVersionContent(content);
+                  
+                  // Obtener datos del caso para la primera versión
+                  try {
+                    const accessToken = await getAccessTokenSilently();
+                    const requestResponse = await lawsuitResource.getRevisionRequest(
+                      Number(id), 
+                      version.uuid,
+                      {
+                        headers: {
+                          Authorization: `Bearer ${accessToken}`,
+                        }
+                      }
+                    );
+                    
+                    if (requestResponse.data) {
+                      setFirstVersionCaseData(requestResponse.data);
+                    }
+                  } catch (error) {
+                    console.error('Error al obtener datos de la versión desde el componente:', error);
+                  }
+                }}
               />
             )}
           </div>
