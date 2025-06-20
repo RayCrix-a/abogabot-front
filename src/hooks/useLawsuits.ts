@@ -49,7 +49,6 @@ const createLawsuitMutation = useMutation({
   },
   onSuccess: (data) => {
     queryClient.invalidateQueries({ queryKey: ['lawsuits'] });
-    toast.success('Demanda creada exitosamente');
   },
   onError: (error) => {
     console.error('Error al crear demanda:', error);
@@ -71,7 +70,6 @@ const createLawsuitMutation = useMutation({
     onSuccess: (data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['lawsuits'] });
       queryClient.invalidateQueries({ queryKey: ['lawsuit'] });
-      toast.success('Demanda actualizada exitosamente');
     },
     onError: (error) => {
       console.error('Error al actualizar demanda:', error);
@@ -124,7 +122,6 @@ const createLawsuitMutation = useMutation({
       // Importante: Usar la forma de objeto para invalidateQueries para asegurar que funcione bien con React Query v4+
       queryClient.invalidateQueries({ queryKey: ['lawsuits'] });
       queryClient.invalidateQueries({ queryKey: ['lawsuit'] });
-      toast.success('Demanda eliminada exitosamente');
     },
     onError: (error, deletedId, context) => {
       console.error('Error detectado en onError:', error);

@@ -34,7 +34,7 @@ export interface LawsuitFormSchema {
   claims: string[]
 }
 
-// Esquema de validación actualizado para múltiples participantes
+// Esquema de validación actualizado
 const caseSchema = z.object({
   title: z.string().max(100, 'El título no puede exceder 100 caracteres'),
   proceedingType: z.string().min(1, 'Seleccione un tipo de procedimiento'),
@@ -43,8 +43,10 @@ const caseSchema = z.object({
   // CAMBIO: Aceptar números en lugar de strings
   plaintiffIds: z.array(z.number()).min(1, 'Debe seleccionar al menos un demandante'),
   defendantIds: z.array(z.number()).min(1, 'Debe seleccionar al menos un demandado'),
-  attorneyIds: z.array(z.number()).optional(),
-  representativeIds: z.array(z.number()).optional(),
+  // CAMBIO: Solo un abogado, obligatorio
+  attorneyIds: z.array(z.number()).length(1, 'Debe seleccionar un abogado patrocinante'),
+  // CAMBIO: Solo un representante, opcional
+  representativeIds: z.array(z.number()).max(1).optional(),
 
   institution: z.string().min(1, 'Tribunal requerido'),
   description: z.string().min(20, 'La descripción debe tener al menos 20 caracteres'),
@@ -226,7 +228,6 @@ const CaseForm = () => {
       default: return [];
     }
   };
-
   const agregarPersonaSeleccionada = (tipo: string, rutPersona: string) => {
     const yaSeleccionada = personasSeleccionadas[tipo].some(p => p.rut === rutPersona);
 
@@ -241,10 +242,18 @@ const CaseForm = () => {
 
       const nuevaPersona: Persona = { id: personaCompleta.id, rut: rutPersona, nombre: "", direccion: "" };
 
-      setPersonasSeleccionadas(prev => ({
-        ...prev,
-        [tipo]: [...prev[tipo], nuevaPersona]
-      }));
+      // Para abogados y representantes solo permitir uno
+      if ((tipo === 'abogados' || tipo === 'representantes')) {
+        setPersonasSeleccionadas(prev => ({
+          ...prev,
+          [tipo]: [nuevaPersona] // Reemplazar el anterior
+        }));
+      } else {
+        setPersonasSeleccionadas(prev => ({
+          ...prev,
+          [tipo]: [...prev[tipo], nuevaPersona]
+        }));
+      }
 
       // Actualizar el formulario principal con los IDs numéricos
       switch (tipo) {
@@ -255,10 +264,10 @@ const CaseForm = () => {
           setValue('defendantIds', [...personasSeleccionadas.demandados.map(p => Number(p.id)), Number(nuevaPersona.id)]);
           break;
         case 'abogados':
-          setValue('attorneyIds', [...personasSeleccionadas.abogados.map(p => Number(p.id)), Number(nuevaPersona.id)]);
+          setValue('attorneyIds', [Number(nuevaPersona.id)]); // Solo un abogado
           break;
         case 'representantes':
-          setValue('representativeIds', [...personasSeleccionadas.representantes.map(p => Number(p.id)), Number(nuevaPersona.id)]);
+          setValue('representativeIds', [Number(nuevaPersona.id)]); // Solo un representante
           break;
       }
     }
@@ -317,13 +326,12 @@ const CaseForm = () => {
     setFormData({ id: null, rut: '', nombre: '', direccion: '' });
     setErroresValidacion({ rut: '', nombre: '', direccion: '' });
   };
-
   const obtenerTitulo = () => {
     const titulos: Record<string, string> = {
       'demandantes': 'Gestionar Demandantes',
       'demandados': 'Gestionar Demandados',
-      'abogados': 'Gestionar Abogados Patrocinantes',
-      'representantes': 'Gestionar Representantes Legales'
+      'abogados': 'Gestionar Abogado Patrocinante',
+      'representantes': 'Gestionar Representante Legal'
     };
     return titulos[tipoOverlay] || '';
   };
@@ -533,9 +541,7 @@ const CaseForm = () => {
       const plaintiffRuts = personasSeleccionadas.demandantes.map(p => p.rut);
       const defendantRuts = personasSeleccionadas.demandados.map(p => p.rut);
       const attorneyRuts = personasSeleccionadas.abogados.map(p => p.rut);
-      const representativeRuts = personasSeleccionadas.representantes.map(p => p.rut);
-
-      // Validar que tenemos al menos un demandante y demandado
+      const representativeRuts = personasSeleccionadas.representantes.map(p => p.rut);      // Validar que tenemos al menos un demandante y demandado
       if (plaintiffRuts.length === 0) {
         toast.error('Debe seleccionar al menos un demandante');
         setSaving(false);
@@ -544,6 +550,13 @@ const CaseForm = () => {
 
       if (defendantRuts.length === 0) {
         toast.error('Debe seleccionar al menos un demandado');
+        setSaving(false);
+        return;
+      }
+      
+      // Validar que tenemos un abogado patrocinante
+      if (attorneyRuts.length === 0) {
+        toast.error('Debe seleccionar un abogado patrocinante');
         setSaving(false);
         return;
       }
@@ -1038,15 +1051,17 @@ const CaseForm = () => {
                 </div>
 
                 {/* Columna derecha: Abogados y Representantes */}
-                <div className="space-y-6">
-                  {/* Abogados */}
+                <div className="space-y-6">                  {/* Abogados */}
                   <div>
-                    <SelectorMultipleCompacto tipo="abogados" titulo="Abogados Patrocinantes" esOpcional={true} />
+                    <SelectorMultipleCompacto tipo="abogados" titulo="Abogado Patrocinante" esOpcional={false} />
+                    {errors.attorneyIds && (
+                      <p className="mt-1 text-sm text-red-500">{errors.attorneyIds.message}</p>
+                    )}
                   </div>
 
                   {/* Representantes */}
                   <div>
-                    <SelectorMultipleCompacto tipo="representantes" titulo="Representantes Legales" esOpcional={true} />
+                    <SelectorMultipleCompacto tipo="representantes" titulo="Representante Legal" esOpcional={true} />
                   </div>
                 </div>
               </div>
