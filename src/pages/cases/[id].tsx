@@ -16,31 +16,27 @@ const CaseDetail = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { id } = router.query as { id: string};
-  const [activeTab, setActiveTab] = useState('document'); // 'document' o 'versions'
+  // Mantenemos activeTab solo para compatibilidad con código existente
+  // pero con un valor fijo ya que ahora usamos navegación entre páginas
+  const [activeTab, setActiveTab] = useState('document');
   const [markdownContent, setMarkdownContent] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [firstVersion, setFirstVersion] = useState<TaskSummaryResponse | null>(null);
   const [firstVersionContent, setFirstVersionContent] = useState('');
   const [firstVersionCaseData, setFirstVersionCaseData] = useState<LawsuitDetailResponse | null>(null);
-  
-  // CAMBIO PRINCIPAL: Mover el estado isEditing aquí
+    // Estado para el modo de edición
   const [isEditing, setIsEditing] = useState(false);
   
-  // Efecto para escuchar el evento personalizado switchTab
+  // Verificar si debemos activar el modo edición por el query param
   useEffect(() => {
-    const handleSwitchTab = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      if (customEvent.detail === 'versions') {
-        setActiveTab('versions');
-      }
-    };
-    
-    window.addEventListener('switchTab', handleSwitchTab);
-    
-    return () => {
-      window.removeEventListener('switchTab', handleSwitchTab);
-    };
-  }, []);
+    if (router.query.edit === 'true') {
+      setIsEditing(true);
+      // Limpiar el parámetro de la URL sin recargar la página
+      const newUrl = `/cases/${id}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [router.query, id]);
+    // Ya no necesitamos el evento personalizado porque redirigimos a otra página
   
   // Obtener datos del caso usando los nuevos hooks
   const { 
@@ -62,11 +58,8 @@ const CaseDetail = () => {
   const { data: revisions = [], isLoading: isLoadingRevisions } = useLawsuitRevisions(Number(id));  // Efecto para obtener la primera versión del historial
   useEffect(() => {
     const fetchFirstVersion = async () => {
-      // Si no hay revisiones, asegurarse que estamos en la pestaña de documento
+      // Si no hay revisiones, simplemente retornar
       if (!revisions.length || !id) {
-        if (activeTab === 'versions') {
-          setActiveTab('document');
-        }
         return;
       }
       
@@ -116,9 +109,8 @@ const CaseDetail = () => {
           console.error('Error al obtener datos de la primera versión:', error);
         }
       }
-    };
-      fetchFirstVersion();
-  }, [revisions, id, getAccessTokenSilently, lawsuitResource, activeTab]);
+    };      fetchFirstVersion();
+  }, [revisions, id, getAccessTokenSilently, lawsuitResource]);
 
   useEffect(() => {
     // CAMBIO: Siempre mostrar la versión más reciente en la vista principal
@@ -209,12 +201,8 @@ const CaseDetail = () => {
     setMarkdownContent('');
     setIsGenerating(true);
     
-    try {
-      await generate(Number(id), (chunk) => {
-        // Solo actualizar el contenido en la vista principal
-        if (activeTab === 'document') {
-          setMarkdownContent(prev => prev + chunk);
-        }
+    try {      await generate(Number(id), (chunk) => {
+        setMarkdownContent(prev => prev + chunk);
       });
       toast.success('Documento generado exitosamente');
       
@@ -310,84 +298,37 @@ const CaseDetail = () => {
       {/* CAMBIO PRINCIPAL: Solo mostrar pestañas y contenido si NO estamos editando */}
       {!isEditing && (
         <>          {/* Pestañas - SIN indicadores de versión en la pestaña principal */}
-          <div className="flex border-b border-gray-700 mt-6 mb-4">
-            <button
-              className={`py-2 px-4 font-medium flex items-center ${
-                activeTab === 'document'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-              onClick={() => setActiveTab('document')}
-            >
+          <div className="flex border-b border-gray-700 mt-6 mb-4">            <div className="py-2 px-4 font-medium flex items-center text-primary border-b-2 border-primary">
               <FiFile className="mr-2" />
               Documento
-            </button>
+            </div>
             {/* Solo mostrar la pestaña de Versiones si hay al menos una versión generada */}
-            {firstVersion && (
+            {firstVersion && (            <Link href={`/cases/versions/page_version?id=${id}`}>
               <button
-                className={`py-2 px-4 font-medium flex items-center ${
-                  activeTab === 'versions'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-                onClick={() => setActiveTab('versions')}
+                className="py-2 px-4 font-medium flex items-center text-gray-400 hover:text-white"
               >
                 <FiClock className="mr-2" />
                 Versiones
               </button>
+            </Link>
             )}
-          </div>          {/* Contenido según pestaña activa */}
-          <div className="bg-dark-lighter rounded-lg">            
-            {activeTab === 'document' || !firstVersion ? (
-                <DocumentViewer 
-                lawsuit={lawsuit}
-                content={firstVersionContent || markdownContent}
-                onGenerateDocument={handleGenerateDocument}
-                isGenerating={isGenerating}
-                title={`Demanda: ${lawsuit?.subjectMatter}`}
-                versionInfo={firstVersion ? {
-                  version: 1,
-                  createdAt: firstVersion.createdAt,
-                  uuid: firstVersion.uuid,
-                  status: 'Completado'
-                } : undefined}
-                versionCaseData={firstVersionCaseData || undefined}
-                onSwitchToVersions={() => setActiveTab('versions')}
-              />
-            ) : (              
-            <DocumentVersioning
-                lawsuitId={Number(id)}
-                onGenerateDocument={handleGenerateDocument}
-                isGenerating={isGenerating}
-                currentCaseData={lawsuit}
-                onStartEditing={startEditing} // Añadimos la misma función de edición que usa CaseDetails
-                onFirstVersionSelect={async (version, content) => {
-                  // Actualizar la primera versión cuando se obtiene desde el componente
-                  setFirstVersion(version);
-                  setFirstVersionContent(content);
-                  
-                  // Obtener datos del caso para la primera versión
-                  try {
-                    const accessToken = await getAccessTokenSilently();
-                    const requestResponse = await lawsuitResource.getRevisionRequest(
-                      Number(id), 
-                      version.uuid,
-                      {
-                        headers: {
-                          Authorization: `Bearer ${accessToken}`,
-                        }
-                      }
-                    );
-                    
-                    if (requestResponse.data) {
-                      setFirstVersionCaseData(requestResponse.data);
-                    }
-                  } catch (error) {
-                    console.error('Error al obtener datos de la versión desde el componente:', error);
-                  }
-                }}
-              />
-            )}
+          </div>          {/* Contenido de la vista de documento */}
+          <div className="bg-dark-lighter rounded-lg">
+            <DocumentViewer 
+              lawsuit={lawsuit}
+              content={firstVersionContent || markdownContent}
+              onGenerateDocument={handleGenerateDocument}
+              isGenerating={isGenerating}
+              title={`Demanda: ${lawsuit?.subjectMatter}`}
+              versionInfo={firstVersion ? {
+                version: 1,
+                createdAt: firstVersion.createdAt,
+                uuid: firstVersion.uuid,
+                status: 'Completado'
+              } : undefined}
+              versionCaseData={firstVersionCaseData || undefined}
+              onSwitchToVersions={() => router.push(`/cases/versions/page_version?id=${id}`)}
+            />
           </div>
         </>
       )}

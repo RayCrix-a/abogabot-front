@@ -36,10 +36,11 @@ const editCaseSchema = z.object({
 export interface EditCaseFormProps { 
   caseData: LawsuitDetailResponse,
   onCancel: any,
+  onEdit?: (data: LawsuitRequest) => Promise<void>, // Opcional: Función para manejar la edición directamente
   hasGeneratedVersions?: boolean, // Indica si ya hay versiones generadas
   switchToVersionsTab?: () => void // Función para cambiar a la pestaña de versiones
 }
-const EditCaseForm = ({ caseData, onCancel, hasGeneratedVersions = false, switchToVersionsTab } : EditCaseFormProps) => {
+const EditCaseForm = ({ caseData, onCancel, onEdit, hasGeneratedVersions = false, switchToVersionsTab } : EditCaseFormProps) => {
   const [saving, setSaving] = useState(false);
   const [claimInput, setClaimInput] = useState('');
   const [claimsList, setClaimsList] = useState<string[]>([]);
@@ -616,24 +617,28 @@ const EditCaseForm = ({ caseData, onCancel, hasGeneratedVersions = false, switch
         institution: data.institution,
         narrative: data.description
       };
-      
-      // Llamada a la API
-      await updateLawsuit({ id: caseData.id, data: lawsuitRequest });
-        // Invalidar consultas para refrescar datos
-      queryClient.invalidateQueries({ queryKey: ['lawsuits'] });
-      queryClient.invalidateQueries({ queryKey: ['lawsuit', caseData.id] });
-      
-      toast.success('Caso actualizado exitosamente');
-      
-      // Si hay versiones generadas y existe la función para cambiar a la pestaña de versiones, redirigir
-      if (hasGeneratedVersions && switchToVersionsTab) {
-        onCancel(); // Cerrar formulario de edición
-        setTimeout(() => {
-          switchToVersionsTab(); // Cambiar a la pestaña de versiones después de un pequeño delay
-          toast.info('Puede generar una nueva versión del documento con los cambios realizados');
-        }, 300);
+        // Si se proporcionó la función onEdit, usarla directamente
+      if (onEdit) {
+        await onEdit(lawsuitRequest);
       } else {
-        onCancel(); // Solo cerrar el formulario si no hay versiones o no se proporcionó la función
+        // Comportamiento tradicional: llamada a la API
+        await updateLawsuit({ id: caseData.id, data: lawsuitRequest });
+        // Invalidar consultas para refrescar datos
+        queryClient.invalidateQueries({ queryKey: ['lawsuits'] });
+        queryClient.invalidateQueries({ queryKey: ['lawsuit', caseData.id] });
+        
+        toast.success('Caso actualizado exitosamente');
+        
+        // Si hay versiones generadas y existe la función para cambiar a la pestaña de versiones, redirigir
+        if (hasGeneratedVersions && switchToVersionsTab) {
+          onCancel(); // Cerrar formulario de edición
+          setTimeout(() => {
+            switchToVersionsTab(); // Cambiar a la pestaña de versiones después de un pequeño delay
+            toast.info('Puede generar una nueva versión del documento con los cambios realizados');
+          }, 300);
+        } else {
+          onCancel(); // Solo cerrar el formulario si no hay versiones o no se proporcionó la función
+        }
       }
     } catch (error) {
       console.error('Error al actualizar caso:', error);

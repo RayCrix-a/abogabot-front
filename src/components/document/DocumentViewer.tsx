@@ -271,17 +271,17 @@ const DocumentViewer = ({
               )}
             </div>
           </div>
-        </div>
+        </div>          
           {/* La información de la versión ahora se muestra en la parte superior del componente */}
           {/* Botones de acción */}
-        <div className="flex flex-wrap gap-3 mt-6">          <button            onClick={() => {
-              // Si ya existe una versión 1, redirigir a la pestaña de versiones
-              if (versionInfo) {
-                // Usar la prop onSwitchToVersions si está disponible, de lo contrario usar el evento
+        <div className="flex flex-wrap gap-3 mt-6">
+          <button
+            onClick={() => {
+              // Si hay versiones, usar onSwitchToVersions para ir a la página de versiones
+              // De lo contrario, generar un nuevo documento
+              if (versionInfo && versionInfo.version === 1) {
                 if (onSwitchToVersions) {
                   onSwitchToVersions();
-                } else {
-                  window.dispatchEvent(new CustomEvent('switchTab', { detail: 'versions' }));
                 }
               } else {
                 // Comportamiento original si no hay versión 1
@@ -295,9 +295,13 @@ const DocumentViewer = ({
                 : 'bg-primary text-white hover:bg-primary-dark'
             }`}
           >
-            {/* Mostrar icono solo si está generando o si ya hay una versión */}
-            {(isGenerating || versionInfo) && (
-              <FiRefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+            {/* Mostrar icono según el estado */}
+            {isGenerating ? (
+              <FiRefreshCw className="w-4 h-4 animate-spin" />
+            ) : versionInfo ? (
+              <FiClock className="w-4 h-4" />
+            ) : (
+              <FiRefreshCw className="w-4 h-4" />
             )}
             {isGenerating ? 'Generando...' : versionInfo ? 'Ver todas las versiones' : 'Generar documento'}
           </button>

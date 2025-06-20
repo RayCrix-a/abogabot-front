@@ -36,16 +36,17 @@ const CaseDetails = ({
   console.log('🔍 CaseDetails render - isEditing:', isEditing);
     // IMPORTANTE: Early return INMEDIATO para modo edición
   if (isEditing) {
-    console.log('🎯 Renderizando SOLO EditCaseForm');
-    return (
+    console.log('🎯 Renderizando SOLO EditCaseForm');    return (
       <div className="bg-dark-lighter rounded-lg p-6">
         <EditCaseForm 
           caseData={caseData} 
           hasGeneratedVersions={!!versionCaseData} // Si hay datos de versión, ya hay al menos una versión generada
           switchToVersionsTab={() => {
-            // Disparar evento personalizado para cambiar a la pestaña de versiones
-            const event = new CustomEvent('switchTab', { detail: 'versions' });
-            window.dispatchEvent(event);
+            // Redirección a la página de versiones en lugar de usar eventos personalizados
+            const caseId = caseData?.id;
+            if (caseId) {
+              window.location.href = `/cases/versions/page_version?id=${caseId}`;
+            }
           }}
           onCancel={() => {
             console.log('📝 Cancelando edición');

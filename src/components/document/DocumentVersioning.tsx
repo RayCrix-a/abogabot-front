@@ -77,23 +77,52 @@ const DocumentVersioning = ({
       }, 1000);
     }
   }, [isGenerating, refetchRevisions]);
-  
-  // Función para obtener el contenido de una revisión
+    // Función para obtener el contenido de una revisión
   const getRevisionContent = async (revision: TaskSummaryResponse): Promise<string> => {
     try {
       const accessToken = await getAccessTokenSilently();
       
-      const contentResponse = await lawsuitResource.getRevisionResponse(
-        lawsuitId, 
-        revision.uuid,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
+      // Creamos una función que envuelve la llamada a la API
+      const makeApiCall = async () => {
+        const contentResponse = await lawsuitResource.getRevisionResponse(
+          lawsuitId, 
+          revision.uuid,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            }
+          }
+        );
+        
+        return contentResponse;
+      };
+      
+      // Intentamos hasta 3 veces con manejo de errores de red
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          const contentResponse = await makeApiCall();
+          return await contentResponse.text();
+        } catch (networkError) {
+          if (networkError instanceof TypeError && networkError.message.includes('fetch')) {
+            retryCount++;
+            if (retryCount >= maxRetries) {
+              console.error(`Error de conexión después de ${maxRetries} intentos:`, networkError);
+              throw networkError;
+            }
+            console.warn(`Reintentando conexión (${retryCount}/${maxRetries})...`);
+            // Esperar antes de reintentar (backoff exponencial)
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)));
+          } else {
+            // Si no es un error de red, lo propagamos
+            throw networkError;
           }
         }
-      );
+      }
       
-      return await contentResponse.text();
+      return ''; // Nunca debería llegar aquí, pero TypeScript lo necesita
     } catch (error) {
       console.error('Error al obtener datos de la versión:', error);
       return '';
@@ -211,7 +240,8 @@ const DocumentVersioning = ({
           </p>
         </div>
         
-        <div className="flex gap-3">          {/* Botón para editar la versión seleccionada */}
+        <div className="flex gap-3">          
+          {/* Botón para editar la versión seleccionada */}
           {versionCaseData && onStartEditing && (
             <button
               onClick={handleEditVersion}

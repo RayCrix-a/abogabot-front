@@ -4,7 +4,9 @@ import Head from 'next/head';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
-import { withAuthenticationRequired } from '@auth0/auth0-react'
+import { withAuthenticationRequired } from '@auth0/auth0-react';
+import NetworkErrorBoundary from './NetworkErrorBoundary';
+import OfflineNotification from './OfflineNotification';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -55,6 +57,12 @@ const MainLayout = ({ children, title, description }: MainLayoutProps) => {
   // Determinar si estamos en una página que necesita layout especial
   const isSpecialLayout = router.pathname === '/chat';
 
+  // Función para reintentar conexión en caso de error de red
+  const handleRetryConnection = () => {
+    // Simplemente recarga la página actual
+    window.location.reload();
+  };
+
   return (
     <>
       <Head>
@@ -72,14 +80,17 @@ const MainLayout = ({ children, title, description }: MainLayoutProps) => {
         {/* Contenido principal */}
         <div className="flex flex-col flex-1 overflow-hidden transition-all duration-300">
           {/* Navbar superior */}
-          <Navbar toggleSidebar={toggleSidebar} />
-
-          {/* Contenido */}
+          <Navbar toggleSidebar={toggleSidebar} />          {/* Contenido */}
           <main className={`flex-1 overflow-y-auto bg-dark-lighter ${isSpecialLayout ? 'p-0' : 'p-4'}`}>
             <div className={isSpecialLayout ? 'h-full p-4' : ''}>
-              {children}
+              <NetworkErrorBoundary onErrorReset={handleRetryConnection}>
+                {children}
+              </NetworkErrorBoundary>
             </div>
           </main>
+          
+          {/* Notificación de desconexión */}
+          <OfflineNotification onRetry={handleRetryConnection} />
 
           {/* Footer - ocultarlo en páginas especiales para maximizar espacio */}
           {!isSpecialLayout && <Footer />}
