@@ -70,6 +70,12 @@ const ActivityLogPage = () => {
 
   return (
     <MainLayout title="Registro de actividad" description="Consulta uso del sistema">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white mb-1">Registro de actividad</h1>
+        <p className="text-gray-400">
+          Revise la actividad realizada en el sistema
+        </p>
+      </div>
       <div className="w-full">
         {!isLoading && !error && activityLogResponse && (
           <>
