@@ -7,112 +7,34 @@ import { SubjectMatterResource } from '@/generated/api/SubjectMatterResource';
 import { RegulationResource } from '@/generated/api/RegulationResource';
 import { RepresentativeResource } from '@/generated/api/RepresentativeResource';
 import { ChatResource } from '@/generated/api/ChatResource';
+import { UserResource } from '@/generated/api/UserResource';
+import { RoleResource } from '@/generated/api/RoleResource';
+import { PermissionResource } from '@/generated/api/PermissionResource';
+import { ActivityLogResource } from '@/generated/api/ActivityLogResource';
 
 // Get API base URL from environment variables with a fallback
 const API_BASE_URL = process.env.NEXT_PUBLIC_ABOGABOT_API_URL || 'http://localhost:8080';
 
+const apiConfig = {
+  baseUrl: API_BASE_URL,
+  baseApiParams: {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  },
+}
+
 // Create instances of API resources
-export const defendantResource = new DefendantResource({
-  baseUrl: API_BASE_URL,
-  baseApiParams: {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  },
-});
-
-export const lawsuitResource = new LawsuitResource({
-  baseUrl: API_BASE_URL,
-  baseApiParams: {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  },
-});
-
-export const lawyerResource = new LawyerResource({
-  baseUrl: API_BASE_URL,
-  baseApiParams: {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  },
-});
-
-export const plaintiffResource = new PlaintiffResource({
-  baseUrl: API_BASE_URL,
-  baseApiParams: {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  },
-});
-
-export const proceedingTypeResource = new ProceedingTypeResource({
-  baseUrl: API_BASE_URL,
-  baseApiParams: {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  },
-});
-
-export const subjectMatterResource = new SubjectMatterResource({
-  baseUrl: API_BASE_URL,
-  baseApiParams: {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  },
-});
-
-
-export const regulationResource = new RegulationResource({
-  baseUrl: API_BASE_URL,
-  baseApiParams: {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  },
-});
-
-export const representativeResource = new RepresentativeResource({
-  baseUrl: API_BASE_URL,
-  baseApiParams: {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  },
-});
-
-// Function to generate documents with streaming support
-export const generateLawsuitDocument = async (id : number) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/lawsuit/generate?id=${id}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': '*/*',
-      },
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error al generar documento: ${response.statusText}`);
-    }
-
-    return response;
-  } catch (error) {
-    console.error('Error en generateLawsuitDocument:', error);
-    throw error;
-  }
-};
-
-export const chatResource = new ChatResource({
-  baseUrl: API_BASE_URL,
-  baseApiParams: {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  },
-});
+export const defendantResource = new DefendantResource(apiConfig);
+export const lawsuitResource = new LawsuitResource(apiConfig);
+export const lawyerResource = new LawyerResource(apiConfig);
+export const plaintiffResource = new PlaintiffResource(apiConfig);
+export const proceedingTypeResource = new ProceedingTypeResource(apiConfig);
+export const subjectMatterResource = new SubjectMatterResource(apiConfig);
+export const regulationResource = new RegulationResource(apiConfig);
+export const representativeResource = new RepresentativeResource(apiConfig);
+export const chatResource = new ChatResource(apiConfig);
+export const userResource = new UserResource(apiConfig);
+export const roleResource = new RoleResource(apiConfig);
+export const permissionResource = new PermissionResource(apiConfig);
+export const activityLogResource = new ActivityLogResource(apiConfig);
