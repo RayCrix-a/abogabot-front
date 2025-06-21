@@ -4,7 +4,7 @@ import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import DocumentVersioning from '@/components/document/DocumentVersioning';
 import EditCaseForm from '@/components/cases/EditCaseForm';
-import VersionCaseDetailsCard from '@/components/cases/VersionCaseDetailsCard';
+import CaseDetailsCard from '@/components/cases/CaseDetailsCard';
 import { useLawsuits } from '@/hooks/useLawsuits';
 import { FiArrowLeft, FiFile } from 'react-icons/fi';
 import { toast } from 'react-toastify';
@@ -168,7 +168,7 @@ const VersionsPage = () => {
       ) : (
         <>
           {/* Detalles del documento actual */}
-          <VersionCaseDetailsCard caseData={lawsuit} />
+          <CaseDetailsCard caseData={lawsuit} />
           
           {/* Mostrar componente de versionado si no estamos en modo edición */}
           <DocumentVersioning

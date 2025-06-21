@@ -7,19 +7,18 @@ import {
 } from '@/lib/apiClient';
 import { toast } from 'react-toastify';
 import { useAuth0 } from '@auth0/auth0-react'
-import { ParticipantRequest, ParticipantSummaryResponse } from '@/generated/api/data-contracts';
+import { ParticipantRequest, ParticipantDetailResponse } from '@/generated/api/data-contracts';
 
 export const useParticipants = () => {
   const { user, getAccessTokenSilently } = useAuth0();
   const queryClient = useQueryClient();
-
   // Queries para obtener los participantes con datos completos
   const { 
     data: plaintiffs = [], 
     isLoading: isLoadingPlaintiffs 
   } = useQuery({
     queryKey: ['plaintiffs'],
-    queryFn: async () : Promise<ParticipantSummaryResponse[]> => {
+    queryFn: async () : Promise<ParticipantDetailResponse[]> => {
       // Primero obtenemos la lista básica
       const accessToken = await getAccessTokenSilently();
       const response = await plaintiffResource.getAllPlaintiffs({page: undefined, recordsPerPage: undefined},{
@@ -40,8 +39,11 @@ export const useParticipants = () => {
           return detailResponse.data;
         } catch (error) {
           console.error(`Error al obtener detalles del demandante ${plaintiff.id}:`, error);
-          // Si falla, retornamos los datos básicos
-          return plaintiff;
+          // Si falla, creamos un objeto con datos básicos y address vacío
+          return {
+            ...plaintiff,
+            address: '' // Completamos con address vacío para cumplir con ParticipantDetailResponse
+          } as ParticipantDetailResponse;
         }
       });
       
@@ -49,13 +51,12 @@ export const useParticipants = () => {
       return detailedList;
     }
   });
-
   const { 
     data: defendants = [], 
     isLoading: isLoadingDefendants 
   } = useQuery({
     queryKey: ['defendants'],
-    queryFn: async () : Promise<ParticipantSummaryResponse[]> => {
+    queryFn: async () : Promise<ParticipantDetailResponse[]> => {
       // Primero obtenemos la lista básica
       const accessToken = await getAccessTokenSilently();
       const response = await defendantResource.getAllDefendants({page: undefined, recordsPerPage: undefined},{
@@ -76,8 +77,11 @@ export const useParticipants = () => {
           return detailResponse.data;
         } catch (error) {
           console.error(`Error al obtener detalles del demandado ${defendant.id}:`, error);
-          // Si falla, retornamos los datos básicos
-          return defendant;
+          // Si falla, creamos un objeto con datos básicos y address vacío
+          return {
+            ...defendant,
+            address: '' // Completamos con address vacío para cumplir con ParticipantDetailResponse
+          } as ParticipantDetailResponse;
         }
       });
       
@@ -85,13 +89,12 @@ export const useParticipants = () => {
       return detailedList;
     }
   });
-
   const { 
     data: lawyers = [], 
     isLoading: isLoadingLawyers 
   } = useQuery({
     queryKey: ['lawyers'],
-    queryFn: async () : Promise<ParticipantSummaryResponse[]> => {
+    queryFn: async () : Promise<ParticipantDetailResponse[]> => {
       // Primero obtenemos la lista básica
       const accessToken = await getAccessTokenSilently();
       const response = await lawyerResource.getAllLawyers({page: undefined, recordsPerPage: undefined}, {
@@ -112,8 +115,11 @@ export const useParticipants = () => {
           return detailResponse.data;
         } catch (error) {
           console.error(`Error al obtener detalles del abogado ${lawyer.id}:`, error);
-          // Si falla, retornamos los datos básicos
-          return lawyer;
+          // Si falla, creamos un objeto con datos básicos y address vacío
+          return {
+            ...lawyer,
+            address: '' // Completamos con address vacío para cumplir con ParticipantDetailResponse
+          } as ParticipantDetailResponse;
         }
       });
       
@@ -121,13 +127,12 @@ export const useParticipants = () => {
       return detailedList;
     }
   });
-
   const { 
     data: representatives = [], 
     isLoading: isLoadingRepresentatives 
   } = useQuery({
     queryKey: ['representatives'],
-    queryFn: async () : Promise<ParticipantSummaryResponse[]> => {
+    queryFn: async () : Promise<ParticipantDetailResponse[]> => {
       // Primero obtenemos la lista básica
       const accessToken = await getAccessTokenSilently();
       const response = await representativeResource.getAllRepresentatives({page: undefined, recordsPerPage: undefined},{
@@ -148,8 +153,11 @@ export const useParticipants = () => {
           return detailResponse.data;
         } catch (error) {
           console.error(`Error al obtener detalles del representante ${representative.id}:`, error);
-          // Si falla, retornamos los datos básicos
-          return representative;
+          // Si falla, creamos un objeto con datos básicos y address vacío
+          return {
+            ...representative,
+            address: '' // Completamos con address vacío para cumplir con ParticipantDetailResponse
+          } as ParticipantDetailResponse;
         }
       });
       

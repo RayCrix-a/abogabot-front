@@ -1,9 +1,11 @@
+// src/components/cases/CaseDetails.tsx - SIMPLIFICADO
 import { useState } from 'react';
 import { parseISO, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { FiEdit, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import EditCaseForm from './EditCaseForm';
+import ParticipantDisplay from '@/components/participants/ParticipantDisplay';
 import { LawsuitDetailResponse, LawsuitStatus } from '@/generated/api/data-contracts';
 
 export interface CaseDetailsProps {
@@ -14,7 +16,7 @@ export interface CaseDetailsProps {
   isEditing: boolean;
   onStartEditing: () => void;
   onCancelEditing: () => void;
-  versionCaseData?: LawsuitDetailResponse; // Datos del caso para la versión 1
+  versionCaseData?: LawsuitDetailResponse;
 }
 
 const CaseDetails = ({ 
@@ -29,36 +31,28 @@ const CaseDetails = ({
 }: CaseDetailsProps) => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-    // Datos a mostrar - usar los datos de la versión 1 cuando estén disponibles (pero no para el estado que siempre debe ser el actual)
+
+  // Datos a mostrar - usar los datos de la versión 1 cuando estén disponibles (pero no para el estado que siempre debe ser el actual)
   const displayData = versionCaseData || caseData;
   
-  console.log('🔍 CaseDetails render - isEditing:', isEditing);
-    // IMPORTANTE: Early return INMEDIATO para modo edición
+  // IMPORTANTE: Early return INMEDIATO para modo edición
   if (isEditing) {
-    console.log('🎯 Renderizando SOLO EditCaseForm');    return (
+    return (
       <div className="bg-dark-lighter rounded-lg p-6">
         <EditCaseForm 
           caseData={caseData} 
-          hasGeneratedVersions={!!versionCaseData} // Si hay datos de versión, ya hay al menos una versión generada
+          hasGeneratedVersions={!!versionCaseData}
           switchToVersionsTab={() => {
-            // Redirección a la página de versiones en lugar de usar eventos personalizados
             const caseId = caseData?.id;
             if (caseId) {
               window.location.href = `/cases/versions/page_version?id=${caseId}`;
             }
           }}
-          onCancel={() => {
-            console.log('📝 Cancelando edición');
-            onCancelEditing();
-          }} 
+          onCancel={onCancelEditing} 
         />
       </div>
     );
   }
-  
-  console.log('👁️ Renderizando vista normal (NO edición)');
-  
-  // CAMBIO: Siempre usar datos actuales del caso (no datos de versión)
   
   // Función para formatear la fecha
   const formatDate = (dateString: string) => {
@@ -76,19 +70,15 @@ const CaseDetails = ({
     if (isConfirmingDelete) {
       try {
         setIsDeleting(true);
-        console.log('Usuario confirmó eliminación en CaseDetails');
-        console.log('Llamando a onDelete() - ID de caso:', caseData?.id);
         const success = await onDelete();
-        console.log('Resultado de onDelete:', success);
         if (success) {
           setIsConfirmingDelete(false);
         } else {
           toast.error('No se pudo eliminar el caso');
-          console.log('onDelete no retornó true, manteniendo estado de confirmación');
         }
       } catch (error) {
         console.error('Error capturado en CaseDetails durante eliminación:', error);
-        toast.error(`Error al eliminar el caso: ${error && error instanceof Error ? error.message : "Error desconocido" }`);
+        toast.error(`Error al eliminar el caso: ${error instanceof Error ? error.message : "Error desconocido"}`);
         setIsConfirmingDelete(false);
       } finally {
         setIsDeleting(false);
@@ -105,7 +95,6 @@ const CaseDetails = ({
 
   // Iniciar edición
   const startEditing = () => {
-    console.log('🚀 Iniciando modo edición');
     onStartEditing();
   };
 
@@ -119,6 +108,7 @@ const CaseDetails = ({
     };
     return statusMap[status] || status;
   };
+
   // Función para cambiar el estado
   const handleStatusChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     const statusMap: Record<string, LawsuitStatus> = {
@@ -139,10 +129,8 @@ const CaseDetails = ({
         }
       }
 
-      // Llamar a la función de actualización y esperar a que termine
       await onStatusChange(apiStatus);
       
-      // Solo mostrar el mensaje después de que la actualización fue exitosa
       const messages = {
         'IN_PROGRESS': 'Caso marcado como en curso',
         'PENDING': 'Caso marcado como pendiente',
@@ -151,7 +139,7 @@ const CaseDetails = ({
       };
       toast.success(messages[apiStatus] || 'Estado actualizado correctamente');
       
-      // Forzar la actualización de la UI actualizando manualmente el estado en caseData
+      // Forzar la actualización de la UI
       if (caseData) {
         caseData.status = apiStatus;
       }
@@ -178,10 +166,10 @@ const CaseDetails = ({
     
     return statusColor[status] || 'bg-gray-700 text-gray-300';
   };
-  // Determinar el estado actual del caso - SIEMPRE usar caseData (actualizado) en lugar de displayData para el estado
+
+  // Determinar el estado actual del caso - SIEMPRE usar caseData (actualizado)
   const status = getDisplayStatus(caseData.status);
 
-  // RESTO DEL COMPONENTE - Solo se renderiza si NO estamos editando
   return (
     <div className="bg-dark-lighter rounded-lg p-6">
       {/* Encabezado */}
@@ -257,10 +245,10 @@ const CaseDetails = ({
               <tr className="border-b border-gray-700">
                 <td className="py-2 text-gray-400">Estado</td>
                 <td className="py-2">
-                  <div className="flex items-center gap-3">                    <span className={`px-3 py-1 rounded-md text-sm font-medium ${getStatusColor(status)}`}>
+                  <div className="flex items-center gap-3">
+                    <span className={`px-3 py-1 rounded-md text-sm font-medium ${getStatusColor(status)}`}>
                       {status}
                     </span>
-                    {/* Selector para cambiar estado - SIEMPRE VISIBLE */}
                     <div className="relative">
                       <select
                         value={status}
@@ -273,7 +261,7 @@ const CaseDetails = ({
                         <option value="Borrador">Borrador</option>
                       </select>
                       <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
                       </div>
@@ -290,55 +278,46 @@ const CaseDetails = ({
             </tbody>
           </table>
         </div>
-        
+          {/* Partes involucradas */}
         <div>
           <h2 className="text-lg font-semibold mb-3 text-white">Partes involucradas</h2>
-          
-          {/* Demandantes */}
-          {displayData.plaintiffs && displayData.plaintiffs.length > 0 && (
-            <div className="mb-4">
-              <h3 className="font-medium text-white">Demandante(s)</h3>
-              {displayData.plaintiffs.map((plaintiff, index) => (
-                <div key={index} className="mb-2">
-                  <p className="text-gray-300">{plaintiff.fullName}</p>
-                  <p className="text-gray-400 text-xs">RUT: {plaintiff.idNumber}</p>
-                  <p className="text-gray-400 text-xs">Dirección: {plaintiff.address}</p>
-                </div>
-              ))}
-            </div>
-          )}
-          
-          {/* Demandados */}
-          {displayData.defendants && displayData.defendants.length > 0 && (
-            <div>
-              <h3 className="font-medium text-white">Demandado(s)</h3>
-              {displayData.defendants.map((defendant, index) => (
-                <div key={index} className="mb-2">
-                  <p className="text-gray-300">{defendant.fullName}</p>
-                  <p className="text-gray-400 text-xs">RUT: {defendant.idNumber}</p>
-                  <p className="text-gray-400 text-xs">Dirección: {defendant.address}</p>
-                </div>
-              ))}
-            </div>
-          )}
-          
-          {/* Abogado */}
-          {displayData.attorneyOfRecord && (
-            <div className="mt-4">
-              <h3 className="font-medium text-white">Abogado patrocinante</h3>
-              <p className="text-gray-300">{displayData.attorneyOfRecord.fullName}</p>
-              <p className="text-gray-400 text-xs">RUT: {displayData.attorneyOfRecord.idNumber}</p>
-            </div>
-          )}
-          
-          {/* Representante */}
-          {displayData.representative && (
-            <div className="mt-4">
-              <h3 className="font-medium text-white">Representante legal</h3>
-              <p className="text-gray-300">{displayData.representative.fullName}</p>
-              <p className="text-gray-400 text-xs">RUT: {displayData.representative.idNumber}</p>
-            </div>
-          )}
+          <div className="space-y-2">
+            {/* Demandantes */}
+            {displayData.plaintiffs && displayData.plaintiffs.length > 0 && (
+              <ParticipantDisplay
+                participants={displayData.plaintiffs}
+                type="demandantes"
+                mode="simple"
+              />
+            )}
+            
+            {/* Demandados */}
+            {displayData.defendants && displayData.defendants.length > 0 && (
+              <ParticipantDisplay
+                participants={displayData.defendants}
+                type="demandados"
+                mode="simple"
+              />
+            )}
+            
+            {/* Abogado */}
+            {displayData.attorneyOfRecord && (
+              <ParticipantDisplay
+                participants={[displayData.attorneyOfRecord]}
+                type="abogados"
+                mode="simple"
+              />
+            )}
+            
+            {/* Representante */}
+            {displayData.representative && (
+              <ParticipantDisplay
+                participants={[displayData.representative]}
+                type="representantes"
+                mode="simple"
+              />
+            )}
+          </div>
         </div>
       </div>
       
