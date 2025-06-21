@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FiClock, FiEye, FiDownload, FiRefreshCw, FiCheck, FiX, FiEdit } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { formatRelativeTime } from '@/utils/dateUtils';
 import { useLawsuits } from '@/hooks/useLawsuits';
 import { useAuth0 } from '@auth0/auth0-react';
-import EditCaseForm from '@/components/cases/EditCaseForm';
 import { TaskSummaryResponse, LawsuitDetailResponse } from '@/generated/api/data-contracts';
 
 interface DocumentVersioningProps {
@@ -12,8 +11,8 @@ interface DocumentVersioningProps {
   onGenerateDocument: () => void;
   isGenerating: boolean;
   currentCaseData: LawsuitDetailResponse;
-  onFirstVersionSelect?: (version: TaskSummaryResponse, content: string) => void; // Prop para manejar la selección de la primera versión
-  onStartEditing?: () => void; // Prop para iniciar el modo de edición (se utiliza el mismo flujo que CaseDetails)
+  onFirstVersionSelect?: (version: TaskSummaryResponse, content: string) => void;
+  onStartEditing?: () => void;
 }
 
 const DocumentVersioning = ({ 
@@ -28,7 +27,10 @@ const DocumentVersioning = ({
   const [selectedRevision, setSelectedRevision] = useState<TaskSummaryResponse | null>(null);
   const [selectedVersionContent, setSelectedVersionContent] = useState<string>('');
   const [versionCaseData, setVersionCaseData] = useState<LawsuitDetailResponse | null>(null);
-  const [isLoadingContent, setIsLoadingContent] = useState(false);  const { 
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
+  const [hasNotifiedFirstVersion, setHasNotifiedFirstVersion] = useState(false);
+
+  const { 
     useLawsuitRevisions, 
     lawsuitResource 
   } = useLawsuits();
@@ -40,49 +42,18 @@ const DocumentVersioning = ({
     refetch: refetchRevisions 
   } = useLawsuitRevisions(lawsuitId);
 
-  // Ordenar revisiones por fecha (más recientes primero)
-  const sortedRevisions = [...revisions].sort((a, b) => {
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  // Memoizar las revisiones ordenadas para evitar recalculos innecesarios
+  const sortedRevisions = useMemo(() => {
+    return [...revisions].sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [revisions]);
 
-  // Seleccionar automáticamente la versión más reciente si no hay ninguna seleccionada
-  useEffect(() => {
-    if (sortedRevisions.length > 0 && !selectedRevision) {
-      const latestRevision = sortedRevisions[0];
-      handleVersionSelect(latestRevision);
-    }
-    
-    // Si existe la función onFirstVersionSelect y hay revisiones, obtener la primera versión (más antigua)
-    if (onFirstVersionSelect && sortedRevisions.length > 0) {
-      const oldestRevisions = [...sortedRevisions].sort((a, b) => {
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      });
-      
-      const firstVersion = oldestRevisions[0];
-      if (firstVersion) {
-        getRevisionContent(firstVersion).then(content => {
-          if (content && onFirstVersionSelect) {
-            onFirstVersionSelect(firstVersion, content);
-          }
-        });
-      }
-    }
-  }, [sortedRevisions, onFirstVersionSelect]);
-
-  // Refrescar revisiones después de generar un documento
-  useEffect(() => {
-    if (!isGenerating) {
-      setTimeout(() => {
-        refetchRevisions();
-      }, 1000);
-    }
-  }, [isGenerating, refetchRevisions]);
-    // Función para obtener el contenido de una revisión
-  const getRevisionContent = async (revision: TaskSummaryResponse): Promise<string> => {
+  // Función para obtener el contenido de una revisión (memoizada)
+  const getRevisionContent = useCallback(async (revision: TaskSummaryResponse): Promise<string> => {
     try {
       const accessToken = await getAccessTokenSilently();
       
-      // Creamos una función que envuelve la llamada a la API
       const makeApiCall = async () => {
         const contentResponse = await lawsuitResource.getRevisionResponse(
           lawsuitId, 
@@ -93,11 +64,9 @@ const DocumentVersioning = ({
             }
           }
         );
-        
         return contentResponse;
       };
       
-      // Intentamos hasta 3 veces con manejo de errores de red
       let retryCount = 0;
       const maxRetries = 3;
       
@@ -113,23 +82,22 @@ const DocumentVersioning = ({
               throw networkError;
             }
             console.warn(`Reintentando conexión (${retryCount}/${maxRetries})...`);
-            // Esperar antes de reintentar (backoff exponencial)
             await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)));
           } else {
-            // Si no es un error de red, lo propagamos
             throw networkError;
           }
         }
       }
       
-      return ''; // Nunca debería llegar aquí, pero TypeScript lo necesita
+      return '';
     } catch (error) {
       console.error('Error al obtener datos de la versión:', error);
       return '';
     }
-  };
+  }, [getAccessTokenSilently, lawsuitId, lawsuitResource]);
 
-  const handleVersionSelect = async (revision: TaskSummaryResponse) => {
+  // Función para manejar la selección de versión (memoizada)
+  const handleVersionSelect = useCallback(async (revision: TaskSummaryResponse) => {
     if (selectedRevision?.uuid === revision.uuid) return;
 
     setIsLoadingContent(true);
@@ -172,27 +140,76 @@ const DocumentVersioning = ({
     } finally {
       setIsLoadingContent(false);
     }
-  };
+  }, [selectedRevision?.uuid, getAccessTokenSilently, lawsuitId, lawsuitResource]);
 
-  const getStatusIcon = (revision: TaskSummaryResponse) => {
+  // Efecto para seleccionar automáticamente la versión más reciente
+  // Solo se ejecuta cuando cambian las revisiones ordenadas
+  useEffect(() => {
+    if (sortedRevisions.length > 0 && !selectedRevision) {
+      const latestRevision = sortedRevisions[0];
+      handleVersionSelect(latestRevision);
+    }
+  }, [sortedRevisions, selectedRevision, handleVersionSelect]);
+
+  // Efecto para notificar la primera versión (más antigua)
+  // Solo se ejecuta una vez cuando hay revisiones y existe la callback
+  useEffect(() => {
+    if (onFirstVersionSelect && sortedRevisions.length > 0 && !hasNotifiedFirstVersion) {
+      const oldestRevisions = [...sortedRevisions].sort((a, b) => {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+      
+      const firstVersion = oldestRevisions[0];
+      if (firstVersion) {
+        getRevisionContent(firstVersion).then(content => {
+          if (content && onFirstVersionSelect) {
+            onFirstVersionSelect(firstVersion, content);
+            setHasNotifiedFirstVersion(true);
+          }
+        });
+      }
+    }
+  }, [onFirstVersionSelect, sortedRevisions, hasNotifiedFirstVersion, getRevisionContent]);
+
+  // Efecto para refrescar revisiones después de generar un documento
+  // Solo se ejecuta cuando isGenerating cambia de true a false
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (!isGenerating && revisions.length > 0) {
+      timeoutId = setTimeout(() => {
+        refetchRevisions();
+      }, 1000);
+    }
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isGenerating, refetchRevisions, revisions.length]);
+
+  // Funciones auxiliares memoizadas
+  const getStatusIcon = useCallback((revision: TaskSummaryResponse) => {
     if (revision.createdAt) {
       return <FiCheck className="text-green-400" />;
     }
     return <FiClock className="text-gray-400" />;
-  };
+  }, []);
 
-  const getStatusColor = (revision: TaskSummaryResponse) => {
+  const getStatusColor = useCallback((revision: TaskSummaryResponse) => {
     if (revision.createdAt) {
       return 'bg-green-900/30 border-green-700 text-green-300';
     }
     return 'bg-gray-900/30 border-gray-700 text-gray-300';
-  };
+  }, []);
 
-  const getStatusText = (revision: TaskSummaryResponse) => {
+  const getStatusText = useCallback((revision: TaskSummaryResponse) => {
     return revision.createdAt ? 'Completado' : 'Procesando';
-  };
+  }, []);
 
-  const downloadVersion = async (revision: TaskSummaryResponse) => {
+  // Función para descargar versión (memoizada)
+  const downloadVersion = useCallback(async (revision: TaskSummaryResponse) => {
     try {
       const accessToken = await getAccessTokenSilently();
       
@@ -223,12 +240,14 @@ const DocumentVersioning = ({
       console.error('Error al descargar versión:', error);
       toast.error('Error al descargar el documento');
     }
-  };  const handleEditVersion = () => {
-    // Usar el manejador externo de edición
+  }, [getAccessTokenSilently, lawsuitId, lawsuitResource]);
+
+  // Función para editar versión (memoizada)
+  const handleEditVersion = useCallback(() => {
     if (onStartEditing) {
       onStartEditing();
     }
-  };
+  }, [onStartEditing]);
 
   return (
     <div className="bg-dark-lighter rounded-lg p-6">
@@ -321,9 +340,12 @@ const DocumentVersioning = ({
                       <FiDownload className="w-3 h-3" />
                     </button>
                   </div>
-                    <div className={`text-xs px-2 py-1 rounded-full inline-block mb-2 ${getStatusColor(revision)}`}>
+                  
+                  <div className={`text-xs px-2 py-1 rounded-full inline-block mb-2 ${getStatusColor(revision)}`}>
                     {getStatusText(revision)}
-                  </div>                    <p className="text-gray-400 text-xs mt-1">
+                  </div>
+                  
+                  <p className="text-gray-400 text-xs mt-1">
                     ID: {revision.uuid}
                   </p>
                 </div>
@@ -341,7 +363,9 @@ const DocumentVersioning = ({
         </div>
 
         {/* Vista previa de la versión seleccionada */}
-        <div className="flex-1">          <div className="flex items-center justify-between mb-4">            <h3 className="text-lg font-semibold text-white">
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">
               {selectedRevision 
                 ? `Versión ${sortedRevisions.length - sortedRevisions.findIndex(r => r.uuid === selectedRevision.uuid)}`
                 : 'Vista Previa'
@@ -384,11 +408,9 @@ const DocumentVersioning = ({
                 </div>
                 <div>
                   <span className="text-gray-400">UUID:</span>
-                    <span className="ml-2 text-white font-mono">
-                    <span className="ml-2 text-green-400 font-mono">
-                      {selectedRevision.uuid}
-                    </span>
-                    </span>
+                  <span className="ml-2 text-green-400 font-mono">
+                    {selectedRevision.uuid}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-400">Creada:</span>

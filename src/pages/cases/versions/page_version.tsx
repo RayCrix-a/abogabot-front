@@ -1,12 +1,12 @@
 import { useRouter } from 'next/router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import DocumentVersioning from '@/components/document/DocumentVersioning';
 import EditCaseForm from '@/components/cases/EditCaseForm';
 import CaseDetailsCard from '@/components/cases/CaseDetailsCard';
 import { useLawsuits } from '@/hooks/useLawsuits';
-import { FiArrowLeft, FiFile } from 'react-icons/fi';
+import { FiArrowLeft } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { useAuth0, withAuthenticationRequired } from '@auth0/auth0-react'
 import { LawsuitDetailResponse, TaskSummaryResponse, LawsuitRequest } from '@/generated/api/data-contracts';
@@ -16,10 +16,8 @@ const VersionsPage = () => {
   const router = useRouter();
   const { id } = router.query as { id: string };
   const [isGenerating, setIsGenerating] = useState(false);
-  const [firstVersion, setFirstVersion] = useState<TaskSummaryResponse | null>(null);
-  const [firstVersionContent, setFirstVersionContent] = useState('');
-  const [firstVersionCaseData, setFirstVersionCaseData] = useState<LawsuitDetailResponse | null>(null);
-  const [isEditing, setIsEditing] = useState(false); // Estado para controlar el modo de edición
+  const [isEditing, setIsEditing] = useState(false);
+  const [hasCheckedRevisions, setHasCheckedRevisions] = useState(false);
   const queryClient = useQueryClient();
   
   // Obtener datos del caso usando hooks
@@ -27,32 +25,36 @@ const VersionsPage = () => {
     useLawsuit, 
     generate,
     useLawsuitRevisions,
-    lawsuitResource,
     updateLawsuit
   } = useLawsuits();
   
-  const { getAccessTokenSilently } = useAuth0();
   const { data: lawsuit, isLoading: isLoadingLawsuit, error: lawsuitError } = useLawsuit(Number(id));
   
   // Verificar si hay revisiones existentes
   const { data: revisions = [], isLoading: isLoadingRevisions } = useLawsuitRevisions(Number(id));
-  // Efecto para redirigir si no hay revisiones
+  
+  // Memoizar el ID numérico para evitar recalculos
+  const lawsuitId = useMemo(() => Number(id), [id]);
+
+  // Efecto para redirigir si no hay revisiones (solo se ejecuta una vez)
   useEffect(() => {
-    if (!isLoadingRevisions && revisions.length === 0) {
-      // Si no hay revisiones, redirigir a la página principal del caso
+    if (!isLoadingRevisions && !hasCheckedRevisions && revisions.length === 0) {
+      setHasCheckedRevisions(true);
       router.push(`/cases/${id}`);
       toast.info('No hay versiones disponibles para este caso');
+    } else if (!isLoadingRevisions && revisions.length > 0) {
+      setHasCheckedRevisions(true);
     }
-  }, [revisions, isLoadingRevisions, id, router]);
+  }, [revisions.length, isLoadingRevisions, id, router, hasCheckedRevisions]);
 
-  // Generar documento
-  const handleGenerateDocument = async () => {
+  // Función para generar documento (memoizada)
+  const handleGenerateDocument = useCallback(async () => {
     if (!id) return;
     
     setIsGenerating(true);
     
     try {
-      await generate(Number(id), () => {
+      await generate(lawsuitId, () => {
         // No necesitamos procesar el contenido aquí, solo generar la nueva versión
       });
       toast.success('Documento generado exitosamente');
@@ -63,40 +65,41 @@ const VersionsPage = () => {
     } finally {
       setIsGenerating(false);
     }
-  };  // Iniciar modo de edición - Ahora se maneja dentro de la misma página
-  const handleStartEditing = () => {
+  }, [id, lawsuitId, generate]);
+
+  // Funciones de edición (memoizadas)
+  const handleStartEditing = useCallback(() => {
     setIsEditing(true);
-  };
+  }, []);
 
-  // Cancelar edición y volver a la vista de versiones
-  const handleCancelEditing = () => {
+  const handleCancelEditing = useCallback(() => {
     setIsEditing(false);
-  };
+  }, []);
 
-  // Manejar la actualización del caso desde la vista de edición
-  const handleUpdateCase = async (updatedData: LawsuitRequest) => {
+  // Manejar la actualización del caso desde la vista de edición (memoizada)
+  const handleUpdateCase = useCallback(async (updatedData: LawsuitRequest) => {
     try {
-      await updateLawsuit({ id: Number(id), data: updatedData });
+      await updateLawsuit({ id: lawsuitId, data: updatedData });
       
       // Invalidar consultas para refrescar datos
       queryClient.invalidateQueries({ queryKey: ['lawsuits'] });
-      queryClient.invalidateQueries({ queryKey: ['lawsuit', Number(id)] });
+      queryClient.invalidateQueries({ queryKey: ['lawsuit', lawsuitId] });
       
       toast.success('Caso actualizado exitosamente');
-      setIsEditing(false); // Volver a la vista de versiones
+      setIsEditing(false);
       
       // Recargar las revisiones después de un breve retraso
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['lawsuit-revisions', Number(id)] });
+        queryClient.invalidateQueries({ queryKey: ['lawsuit-revisions', lawsuitId] });
       }, 500);
     } catch (error) {
       console.error('Error al actualizar caso:', error);
       toast.error(`Error al actualizar el caso: ${error && error instanceof Error ? error.message : "Error desconocido"}`);
     }
-  };
+  }, [lawsuitId, updateLawsuit, queryClient]);
 
   // Si está cargando, mostrar indicador
-  if (isLoadingLawsuit) {
+  if (isLoadingLawsuit || (isLoadingRevisions && !hasCheckedRevisions)) {
     return (
       <MainLayout title="Cargando versiones..." description="Cargando historial de versiones">
         <div className="flex justify-center items-center h-full">
@@ -112,7 +115,8 @@ const VersionsPage = () => {
       <MainLayout title="Error" description="Error al cargar las versiones">
         <div className="bg-red-900 text-red-200 p-4 rounded-lg">
           <h2 className="text-xl font-bold mb-2">Error al cargar las versiones</h2>
-          <p>{lawsuitError instanceof Error? lawsuitError.message : 'Error desconocido'}</p>          <Link href={`/cases/${id}`}>
+          <p>{lawsuitError instanceof Error? lawsuitError.message : 'Error desconocido'}</p>
+          <Link href={`/cases/${id}`}>
             <button className="mt-4 btn-primary">Volver al Caso</button>
           </Link>
         </div>
@@ -135,8 +139,14 @@ const VersionsPage = () => {
     );
   }
 
+  // Si no hay revisiones y ya hemos verificado, no renderizar nada (se redirigirá)
+  if (hasCheckedRevisions && revisions.length === 0) {
+    return null;
+  }
+
   // Construir título de la página
   const pageTitle = `Versiones - ${lawsuit.subjectMatter || 'Caso'}`;
+  
   return (
     <MainLayout 
       title={pageTitle} 
@@ -144,19 +154,20 @@ const VersionsPage = () => {
     >
       {/* Cabecera con navegación */}
       <div className="mb-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">          <div className="flex items-center space-x-4">            <Link href={`/cases/${id}`}>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center space-x-4">
+            <Link href={`/cases/${id}`}>
               <button className="flex items-center text-gray-400 hover:text-white">
                 <FiArrowLeft className="mr-2" />
                 Volver al Caso
               </button>
             </Link>
           </div>
-          
-
         </div>
       </div>
 
-      {/* Modo edición - Mostrar formulario de edición */}      {isEditing ? (
+      {/* Modo edición - Mostrar formulario de edición */}
+      {isEditing ? (
         <div className="bg-dark-lighter rounded-lg p-6">
           <EditCaseForm 
             caseData={lawsuit} 
@@ -172,35 +183,12 @@ const VersionsPage = () => {
           
           {/* Mostrar componente de versionado si no estamos en modo edición */}
           <DocumentVersioning
-          lawsuitId={Number(id)}
-          onGenerateDocument={handleGenerateDocument}
-          isGenerating={isGenerating}
-          currentCaseData={lawsuit}
-          onStartEditing={handleStartEditing}        onFirstVersionSelect={async (version, content) => {
-          // Actualizar la primera versión cuando se obtiene desde el componente
-          setFirstVersion(version);
-          setFirstVersionContent(content);
-          
-          // Obtener datos del caso para la primera versión
-          try {
-            const accessToken = await getAccessTokenSilently();
-            const requestResponse = await lawsuitResource.getRevisionRequest(
-              Number(id), 
-              version.uuid,
-              {
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                }
-              }
-            );
-            
-            if (requestResponse.data) {
-              setFirstVersionCaseData(requestResponse.data);
-            }
-          } catch (error) {
-            console.error('Error al obtener datos de la versión desde el componente:', error);
-          }
-        }}      />
+            lawsuitId={lawsuitId}
+            onGenerateDocument={handleGenerateDocument}
+            isGenerating={isGenerating}
+            currentCaseData={lawsuit}
+            onStartEditing={handleStartEditing}
+          />
         </>
       )}
     </MainLayout>
