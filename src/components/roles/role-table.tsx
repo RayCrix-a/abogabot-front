@@ -19,20 +19,40 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRoles } from "@/hooks/useRoles";
+import CrudSidebar from "../ui/crud-sidebar";
+import { RoleInfo } from "./role-info";
 
-
-export const columns: ColumnDef<RoleSummaryResponse>[] = [
-  { accessorKey: "id", header: "Id" },
-  { accessorKey: "name", header: "Nombre" },
-  { accessorKey: "description", header: "Descripción" }
-]
 
 const RoleTable = () => {
-
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
+  const [isViewOpen, setIsViewOpen] = useState(false)
   const [page, setPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
-  const { roleResponse, isLoading } = useRoles(page, recordsPerPage);
+  const { roleResponse, useRoleInfo, isLoading } = useRoles(page, recordsPerPage);
+  const {data: selectedRole } = useRoleInfo(selectedRoleId)
 
+
+   const columns: ColumnDef<RoleSummaryResponse>[] = [
+    { accessorKey: "id", header: "Id" },
+    { accessorKey: "name", header: "Nombre" },
+    { accessorKey: "description", header: "Descripción" },
+    {
+        id: "actions",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <div className="flex gap-2">
+            <Button size="sm" variant="link" onClick={() => {
+                setSelectedRoleId(row.original.id)
+                setIsViewOpen(true)
+            }}>
+            Ver
+            </Button>
+        </div>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+    }
+  ]
 
   const table = useReactTable({
     data: roleResponse?.results || [],
@@ -46,6 +66,14 @@ const RoleTable = () => {
 
   return (
       <div className="w-full">
+        {selectedRole && (
+            <CrudSidebar title="Detalles de rol" isOpen={isViewOpen} onClose={() => {
+                setSelectedRoleId(null)
+                setIsViewOpen(false)
+            }}>
+                <RoleInfo role={selectedRole}/>
+            </CrudSidebar>
+        )}
         {!isLoading && roleResponse && (
           <>
             <div className="rounded-md border">

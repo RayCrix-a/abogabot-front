@@ -25,7 +25,7 @@ export const useRoles = (page: number = 1, recordsPerPage : number = 10) => {
     }
   });
 
-   const useRoleInfo = (id : string) => {
+   const useRoleInfo = (id : string | null) => {
       return useQuery({
         queryKey: ['role', id],
         queryFn: async () => {

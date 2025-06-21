@@ -5,6 +5,7 @@ import {
 import { toast } from 'react-toastify';
 import { useAuth0 } from '@auth0/auth0-react'
 import { PaginableUserResponse, UserCreateRequest, UserUpdateRequest, UserDetailResponse } from '@/generated/api/data-contracts';
+import { userInfo } from 'os';
 
 export const useUsers = (page: number = 1, recordsPerPage : number = 10) => {
   const { getAccessTokenSilently } = useAuth0();
@@ -25,7 +26,7 @@ export const useUsers = (page: number = 1, recordsPerPage : number = 10) => {
     }
   });
 
-   const useUserInfo = (id : string) => {
+   const useUserInfo = (id : string | null) => {
       return useQuery({
         queryKey: ['user', id],
         queryFn: async () => {

@@ -19,40 +19,60 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useUsers } from '@/hooks/useUsers';
+import CrudSidebar from "../ui/crud-sidebar";
+import { UserInfo } from "./user-info";
 
-
-export const columns: ColumnDef<UserSummaryResponse>[] = [
-  { accessorKey: "id", header: "Id" },
-  { accessorKey: "name", header: "Nombre" },
-  { accessorKey: "email", header: "Correo" },
-  { accessorKey: "verified", header: "Verificado", cell: ({getValue}) => getValue() as boolean ? "Sí" : "No" },
-  {
-    accessorKey: "createdAt",
-    header: "Fecha/hora creación",
-    cell: ({ getValue }) => {
-      const value = getValue() as string;
-      if (!value) return "";
-      const date = new Date(value);
-      return date.toLocaleString();
-    }
-  },
-  {
-    accessorKey: "lastLogin",
-    header: "Última conexion",
-    cell: ({ getValue }) => {
-      const value = getValue() as string;
-      if (!value) return "";
-      const date = new Date(value);
-      return date.toLocaleString();
-    }
-  }
-]
 
 const UserTable = () => {
-
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [isViewOpen, setIsViewOpen] = useState(false)
   const [page, setPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
-  const { userResponse, isLoading } = useUsers(page, recordsPerPage);
+  const { userResponse, useUserInfo,  isLoading } = useUsers(page, recordsPerPage);
+  const { data: selectedUser } = useUserInfo(selectedUserId)
+
+  const columns: ColumnDef<UserSummaryResponse>[] = [
+    { accessorKey: "id", header: "Id" },
+    { accessorKey: "name", header: "Nombre" },
+    { accessorKey: "email", header: "Correo" },
+    { accessorKey: "verified", header: "Verificado", cell: ({getValue}) => getValue() as boolean ? "Sí" : "No" },
+    {
+        accessorKey: "createdAt",
+        header: "Fecha/hora creación",
+        cell: ({ getValue }) => {
+        const value = getValue() as string;
+        if (!value) return "";
+        const date = new Date(value);
+        return date.toLocaleString();
+        }
+    },
+    {
+        accessorKey: "lastLogin",
+        header: "Última conexion",
+        cell: ({ getValue }) => {
+        const value = getValue() as string;
+        if (!value) return "";
+        const date = new Date(value);
+        return date.toLocaleString();
+        }
+    },
+    {
+        id: "actions",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <div className="flex gap-2">
+            <Button size="sm" variant="link" onClick={() => {
+                setSelectedUserId(row.original.id)
+                setIsViewOpen(true)
+            }}>
+            Ver
+            </Button>
+        </div>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+    }
+    ]
 
 
   const table = useReactTable({
@@ -67,6 +87,14 @@ const UserTable = () => {
 
   return (
       <div className="w-full">
+        {selectedUser && (
+            <CrudSidebar title="Detalles de usuario" isOpen={isViewOpen} onClose={() => {
+                setSelectedUserId(null)
+                setIsViewOpen(false)
+            }}>
+                <UserInfo user={selectedUser}/>
+            </CrudSidebar>
+        )}
         {!isLoading && userResponse && (
           <>
             <div className="rounded-md border">
