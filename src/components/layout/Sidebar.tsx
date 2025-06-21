@@ -1,7 +1,7 @@
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { FiHome, FiFolder, FiMessageCircle, FiClock, FiSettings } from 'react-icons/fi';
+import { FiHome, FiFolder, FiMessageCircle, FiClock, FiSettings, FiActivity, FiUsers } from 'react-icons/fi';
 import { useLawsuits } from '@/hooks/useLawsuits';
 
 interface SidebarProps {
@@ -83,6 +83,16 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
       name: 'Historial',
       path: '/history',
       icon: <FiClock className="w-5 h-5" />
+    },
+    {
+      name: 'Registro de actividad',
+      path: '/activity-log',
+      icon: <FiActivity  className="w-5 h-5" />
+    },
+    {
+      name: 'Usuarios, roles y permisos',
+      path: '/user-admin',
+      icon: <FiUsers className="w-5 h-5" />
     },
     {
       name: 'Configuración',
