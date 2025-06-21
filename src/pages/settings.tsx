@@ -1,20 +1,29 @@
-import { useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { useAuth0, withAuthenticationRequired } from '@auth0/auth0-react';
+import MainLayout from '@/components/layout/MainLayout';
+import { withAuthenticationRequired } from '@auth0/auth0-react';
+import useSidebarState from '@/hooks/useSidebarState';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const SettingsPage = () => {
-  const router = useRouter();
-  
-  useEffect(() => {
-    // Redirigir a la página de mantenimiento con parámetros relevantes
-    router.replace({
-      pathname: '/maintenance',
-      query: { from: '/settings', title: 'Configuración' },
-    });
-  }, [router]);
+  useSidebarState();
 
-  // Renderizar un placeholder mientras se realiza la redirección
-  return <div className="min-h-screen bg-dark"></div>;
+  return (
+    <MainLayout title="Configuración" description="Configuración de la aplicación">
+      <h1 className="text-2xl font-bold text-white mb-1">Configuración</h1>
+      <p className="text-gray-400">
+        Ajuste la configuración deseada del sistema
+      </p>
+      <div className='mt-6'>
+        <Tabs defaultValue="usuarios" className="w-[400px]">
+          <TabsList>
+            <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
+            <TabsTrigger value="roles">Roles</TabsTrigger>
+          </TabsList>
+          <TabsContent value="usuarios">Gestiona usuarios aquí</TabsContent>
+          <TabsContent value="roles">Gestiona roles aquí</TabsContent>
+        </Tabs>
+      </div>
+    </MainLayout>
+  );
 };
 
 export default withAuthenticationRequired(SettingsPage);

@@ -90,11 +90,6 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
       icon: <FiActivity  className="w-5 h-5" />
     },
     {
-      name: 'Usuarios, roles y permisos',
-      path: '/user-admin',
-      icon: <FiUsers className="w-5 h-5" />
-    },
-    {
       name: 'Configuración',
       path: '/settings',
       icon: <FiSettings className="w-5 h-5" />
