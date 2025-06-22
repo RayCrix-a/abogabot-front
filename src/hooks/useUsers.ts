@@ -5,7 +5,6 @@ import {
 import { toast } from 'react-toastify';
 import { useAuth0 } from '@auth0/auth0-react'
 import { PaginableUserResponse, UserCreateRequest, UserUpdateRequest, UserDetailResponse } from '@/generated/api/data-contracts';
-import { userInfo } from 'os';
 
 export const useUsers = (page: number = 1, recordsPerPage : number = 10) => {
   const { getAccessTokenSilently } = useAuth0();
@@ -56,7 +55,10 @@ export const useUsers = (page: number = 1, recordsPerPage : number = 10) => {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['users']);
+      setTimeout(() => {
+        queryClient.invalidateQueries(['users', page, recordsPerPage]);
+        queryClient.refetchQueries(['users', page, recordsPerPage]);
+      }, 1000); 
       toast.success('Usuario creado exitosamente');
     },
     onError: (error) => {
@@ -76,8 +78,10 @@ export const useUsers = (page: number = 1, recordsPerPage : number = 10) => {
       return response.data;
     },
     onSuccess: (op) => {
-      queryClient.invalidateQueries(['users']);
-      queryClient.invalidateQueries(['user', op.id]);
+      setTimeout(() => {
+        queryClient.invalidateQueries(['users', page, recordsPerPage]);
+        queryClient.invalidateQueries(['user', op.id]);
+      }, 1000); 
       toast.success('Usuario actualizado exitosamente');
     },
     onError: (error) => {
@@ -97,8 +101,10 @@ export const useUsers = (page: number = 1, recordsPerPage : number = 10) => {
       return response.data;
     },
     onSuccess: (op) => {
-      queryClient.invalidateQueries(['users']);
-      queryClient.invalidateQueries(['user', op.id]);
+      setTimeout(() => {
+        queryClient.invalidateQueries(['users', page, recordsPerPage]);
+        queryClient.invalidateQueries(['user', op.id]);
+      }, 1000); 
       toast.success('Usuario eliminado exitosamente');
     },
     onError: (error) => {

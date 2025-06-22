@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { RoleSummaryResponse } from '@/generated/api/data-contracts';
+import { RoleCreateRequest, RoleSummaryResponse, RoleUpdateRequest } from '@/generated/api/data-contracts';
 import useSidebarState from '@/hooks/useSidebarState';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -21,14 +21,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useRoles } from "@/hooks/useRoles";
 import CrudSidebar from "../ui/crud-sidebar";
 import { RoleInfo } from "./role-info";
+import { RoleForm } from "./role-form";
 
 
 const RoleTable = () => {
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
   const [isViewOpen, setIsViewOpen] = useState(false)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [page, setPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
-  const { roleResponse, useRoleInfo, isLoading } = useRoles(page, recordsPerPage);
+  const { roleResponse, useRoleInfo, createRole, updateRole, deleteRole, isLoading } = useRoles(page, recordsPerPage);
   const {data: selectedRole } = useRoleInfo(selectedRoleId)
 
 
@@ -47,6 +50,18 @@ const RoleTable = () => {
             }}>
             Ver
             </Button>
+             <Button size="sm" variant="link" onClick={() => {
+                setSelectedRoleId(row.original.id)
+                setIsFormOpen(true)
+            }}>
+            Editar
+            </Button>
+            <Button size="sm" variant="link" onClick={() => {
+                setSelectedRoleId(row.original.id)
+                setIsDeleteDialogOpen(true)
+            }}>
+            Eliminar
+            </Button>
         </div>
         ),
         enableSorting: false,
@@ -62,10 +77,27 @@ const RoleTable = () => {
 
   useSidebarState()
 
+  const onCreateRole = (request : RoleCreateRequest) => {
+      createRole(request)
+      setIsFormOpen(false)
+    }
+  
+    const onUpdateRole = (id: string, request : RoleUpdateRequest) => {
+      updateRole({id, data: request})
+      setIsFormOpen(false)
+      setSelectedRoleId(null)
+    }
+
   const totalPages = roleResponse?.metadata?.pages || 1;
 
   return (
       <div className="w-full">
+        <div className="mb-2 w-full flex place-content-end">
+            <Button size="sm" onClick={() => {
+                setSelectedRoleId(null)
+                setIsFormOpen(true)
+            }}>Nuevo rol</Button>
+        </div>
         {selectedRole && (
             <CrudSidebar title="Detalles de rol" isOpen={isViewOpen} onClose={() => {
                 setSelectedRoleId(null)
@@ -74,6 +106,39 @@ const RoleTable = () => {
                 <RoleInfo role={selectedRole}/>
             </CrudSidebar>
         )}
+
+        {isDeleteDialogOpen && selectedRole && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+                <div className="bg-secondary p-6 rounded shadow-md">
+                <p>¿Estás seguro de que deseas eliminar al rol <b>{selectedRole.name}</b>?</p>
+                <div className="flex gap-2 mt-4 justify-end">
+                    <Button variant="ghost" onClick={() => setIsDeleteDialogOpen(false)}>
+                    Cancelar
+                    </Button>
+                    <Button
+                    variant="destructive"
+                    onClick={() => {
+                        deleteRole(selectedRole.id)
+                        setIsDeleteDialogOpen(false);
+                        setSelectedRoleId(null)
+                    }}
+                    >
+                    Eliminar
+                    </Button>
+                </div>
+                </div>
+            </div>
+            )}
+        
+        <CrudSidebar 
+            title={selectedRole ? "Actualizar rol" : "Crear rol"}
+            isOpen={isFormOpen}
+            onClose={() => {
+            setSelectedRoleId(null)
+            setIsFormOpen(false)
+        }}>
+            <RoleForm role={selectedRole} onCreate={onCreateRole} onUpdate={onUpdateRole}/>
+        </CrudSidebar>
         {!isLoading && roleResponse && (
           <>
             <div className="rounded-md border">

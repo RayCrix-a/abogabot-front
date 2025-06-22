@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { UserSummaryResponse } from '@/generated/api/data-contracts';
+import { UserCreateRequest, UserSummaryResponse, UserUpdateRequest } from '@/generated/api/data-contracts';
 import useSidebarState from '@/hooks/useSidebarState';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -21,14 +21,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useUsers } from '@/hooks/useUsers';
 import CrudSidebar from "../ui/crud-sidebar";
 import { UserInfo } from "./user-info";
+import { UserForm } from "./user-form";
 
 
 const UserTable = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [isViewOpen, setIsViewOpen] = useState(false)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [page, setPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
-  const { userResponse, useUserInfo,  isLoading } = useUsers(page, recordsPerPage);
+  const { userResponse, useUserInfo, createUser, updateUser, deleteUser, isLoading } = useUsers(page, recordsPerPage);
   const { data: selectedUser } = useUserInfo(selectedUserId)
 
   const columns: ColumnDef<UserSummaryResponse>[] = [
@@ -67,6 +70,18 @@ const UserTable = () => {
             }}>
             Ver
             </Button>
+            <Button size="sm" variant="link" onClick={() => {
+                setSelectedUserId(row.original.id)
+                setIsFormOpen(true)
+            }}>
+            Editar
+            </Button>
+            <Button size="sm" variant="link" onClick={() => {
+                setSelectedUserId(row.original.id)
+                setIsDeleteDialogOpen(true)
+            }}>
+            Eliminar
+            </Button>
         </div>
         ),
         enableSorting: false,
@@ -83,10 +98,27 @@ const UserTable = () => {
 
   useSidebarState()
 
+  const onCreateUser = (request : UserCreateRequest) => {
+    createUser(request)
+    setIsFormOpen(false)
+  }
+
+  const onUpdateUser = (id: string, request : UserUpdateRequest) => {
+    updateUser({id, data: request})
+    setIsFormOpen(false)
+    setSelectedUserId(null)
+  }
+
   const totalPages = userResponse?.metadata?.pages || 1;
 
   return (
       <div className="w-full">
+        <div className="mb-2 w-full flex place-content-end">
+            <Button size="sm" onClick={() => {
+                setSelectedUserId(null)
+                setIsFormOpen(true)
+            }}>Nuevo usuario</Button>
+        </div>
         {selectedUser && (
             <CrudSidebar title="Detalles de usuario" isOpen={isViewOpen} onClose={() => {
                 setSelectedUserId(null)
@@ -95,6 +127,40 @@ const UserTable = () => {
                 <UserInfo user={selectedUser}/>
             </CrudSidebar>
         )}
+
+        {isDeleteDialogOpen && selectedUser && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+                <div className="bg-secondary p-6 rounded shadow-md">
+                <p>¿Estás seguro de que deseas eliminar al usuario <b>{selectedUser.name}</b>?</p>
+                <div className="flex gap-2 mt-4 justify-end">
+                    <Button variant="ghost" onClick={() => setIsDeleteDialogOpen(false)}>
+                    Cancelar
+                    </Button>
+                    <Button
+                    variant="destructive"
+                    onClick={() => {
+                        deleteUser(selectedUser.id)
+                        setIsDeleteDialogOpen(false);
+                        setSelectedUserId(null)
+                    }}
+                    >
+                    Eliminar
+                    </Button>
+                </div>
+                </div>
+            </div>
+            )}
+        
+        <CrudSidebar 
+            title={selectedUser ? "Actualizar usuario" : "Crear usuario"}
+            isOpen={isFormOpen}
+            onClose={() => {
+            setSelectedUserId(null)
+            setIsFormOpen(false)
+        }}>
+            <UserForm user={selectedUser} onCreate={onCreateUser} onUpdate={onUpdateUser}/>
+        </CrudSidebar>
+        
         {!isLoading && userResponse && (
           <>
             <div className="rounded-md border">

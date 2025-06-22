@@ -55,7 +55,9 @@ export const useRoles = (page: number = 1, recordsPerPage : number = 10) => {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['roles']);
+      setTimeout(() => {
+        queryClient.invalidateQueries(['roles', page, recordsPerPage]);
+      }, 1000); 
       toast.success('Rol creado exitosamente');
     },
     onError: (error) => {
@@ -75,8 +77,10 @@ export const useRoles = (page: number = 1, recordsPerPage : number = 10) => {
       return response.data;
     },
     onSuccess: (op) => {
-      queryClient.invalidateQueries(['roles']);
-      queryClient.invalidateQueries(['role', op.id]);
+      setTimeout(() => {
+        queryClient.invalidateQueries(['roles', page, recordsPerPage]);
+        queryClient.invalidateQueries(['role', op.id]);
+      }, 1000); 
       toast.success('Rol actualizado exitosamente');
     },
     onError: (error) => {
@@ -96,8 +100,10 @@ export const useRoles = (page: number = 1, recordsPerPage : number = 10) => {
       return response.data;
     },
     onSuccess: (op) => {
-      queryClient.invalidateQueries(['roles']);
-      queryClient.invalidateQueries(['role', op.id]);
+      setTimeout(() => {
+        queryClient.invalidateQueries(['roles', page, recordsPerPage]);
+        queryClient.invalidateQueries(['role', op.id]);
+      }, 1000); 
       toast.success('Rol eliminado exitosamente');
     },
     onError: (error) => {
